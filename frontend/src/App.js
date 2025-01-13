@@ -7,19 +7,20 @@ const App = () => {
   const [channels, setChannels] = useState(["Général", "Gaming", "Tech", "Random"]);
   const [users, setUsers] = useState(["Alice", "Bob", "Charlie", "Eve"]);
   const [messages, setMessages] = useState([
-    { user: "Alice", text: "Salut tout le monde !" },
-    { user: "Bob", text: "Hello !" },
-    { user: "Charlie", text: "Ça va ?" },
+    { user: "Alice", text: "Salut tout le monde !", channel: "Général" },
+    { user: "Bob", text: "Hello !", channel: "Général" },
+    { user: "Charlie", text: "Ça va ?", channel: "Général" },
   ]);
   const [username, setUsername] = useState("");
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
+  const [selectedChannel, setSelectedChannel] = useState("Général"); // État pour le channel sélectionné
 
   // Fonction pour envoyer un message
   const handleSendMessage = () => {
     if (currentMessage.trim() !== "") {
-      setMessages([...messages, { user: username, text: currentMessage }]);
+      setMessages([...messages, { user: username, text: currentMessage, channel: selectedChannel }]);
       setCurrentMessage("");
     }
   };
@@ -46,6 +47,9 @@ const App = () => {
   const handleDeleteChannel = (index) => {
     const updatedChannels = channels.filter((_, i) => i !== index);
     setChannels(updatedChannels);
+    if (selectedChannel === channels[index]) {
+      setSelectedChannel(updatedChannels[0] || ""); // Sélectionner un autre channel si le channel actuel est supprimé
+    }
   };
 
   const handleSetUsername = (name) => {
@@ -93,7 +97,7 @@ const App = () => {
               </div>
               <ul>
                 {channels.map((channel, index) => (
-                  <li key={index}>
+                  <li key={index} onClick={() => setSelectedChannel(channel)} className={selectedChannel === channel ? "selected" : ""}>
                     {channel}
                     <div>
                       <i className="fas fa-edit small" onClick={() => handleRenameChannel(index)}></i>
@@ -118,11 +122,13 @@ const App = () => {
         {/* Section principale : Messages */}
         <div className="main-section">
           <div className="messages">
-            {messages.map((message, index) => (
-              <div key={index} className={`message ${message.user === username ? "my-message" : ""}`}>
-                <strong>{message.user}:</strong> {message.text}
-              </div>
-            ))}
+            {messages
+              .filter((message) => message.channel === selectedChannel)
+              .map((message, index) => (
+                <div key={index} className={`message ${message.user === username ? "my-message" : ""}`}>
+                  <strong>{message.user}:</strong> {message.text}
+                </div>
+              ))}
           </div>
           <div className="input-section">
             <input
