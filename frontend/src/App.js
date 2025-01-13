@@ -14,11 +14,12 @@ const App = () => {
   const [username, setUsername] = useState("");
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
+  const [view, setView] = useState("channels");
 
   // Fonction pour envoyer un message
   const handleSendMessage = () => {
     if (currentMessage.trim() !== "") {
-      setMessages([...messages, { user: "Moi", text: currentMessage }]);
+      setMessages([...messages, { user: username, text: currentMessage }]);
       setCurrentMessage("");
     }
   };
@@ -77,27 +78,48 @@ const App = () => {
   else {
     return (
       <div className="app">
-        {/* Barre latérale gauche : Channels */}
+        {/* Barre latérale gauche : Channels/Discussions */}
         <div className="sidebar-left">
-          <h3>Salons</h3>
-          <button onClick={handleAddChannel}>+</button>
-          <ul>
-            {channels.map((channel, index) => (
-              <li key={index}>
-                {channel}
-                <button onClick={() => handleRenameChannel(index)}>Renommer</button>
-                <button onClick={() => handleDeleteChannel(index)}>Supprimer</button>
-              </li>
-            ))}
-          </ul>
-          {/* 3# appeler la fonction */}
+          <h3>Navigation</h3>
+          <div className="navigation-buttons">
+            <button onClick={() => setView("channels")}>Salons</button>
+            <button onClick={() => setView("discussions")}>Discussions</button>
+          </div>
+          {view === "channels" ? (
+            <>
+              <div className="title-container">
+                <h3>Salons</h3>
+                <button className="add-channel-button" onClick={handleAddChannel}>+</button>
+              </div>
+              <ul>
+                {channels.map((channel, index) => (
+                  <li key={index}>
+                    {channel}
+                    <div>
+                      <i className="fas fa-edit small" onClick={() => handleRenameChannel(index)}></i>
+                      <i className="fas fa-trash-alt small" onClick={() => handleDeleteChannel(index)}></i>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <h3>Discussions</h3>
+              <ul>
+                {users.map((user, index) => (
+                  <li key={index}>{user}</li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
 
         {/* Section principale : Messages */}
         <div className="main-section">
           <div className="messages">
             {messages.map((message, index) => (
-              <div key={index} className={`message ${message.user === "Moi" ? "my-message" : ""}`}>
+              <div key={index} className={`message ${message.user === username ? "my-message" : ""}`}>
                 <strong>{message.user}:</strong> {message.text}
               </div>
             ))}
