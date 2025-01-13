@@ -65,23 +65,42 @@ const App = () => {
       <div className={`sidebar-left ${isMenuOpen ? "open" : ""}`}>
         <h3>Navigation</h3>
         <div className="navigation-buttons">
-          <button onClick={() => setView("channels")}>Salons</button>
-          <button onClick={() => setView("discussions")}>Discussions</button>
+          <button
+            className={view === "channels" ? "active" : ""}
+            onClick={() => setView("channels")}
+          >
+            Salons
+          </button>
+          <button
+            className={view === "discussions" ? "active" : ""}
+            onClick={() => setView("discussions")}
+          >
+            Discussions
+          </button>
         </div>
-        <ul>
-          {channels.map((channel, index) => (
-            <li
-              key={index}
-              onClick={() => {
-                setSelectedChannel(channel);
-                setIsMenuOpen(false); // Fermer le menu burger après sélection
-              }}
-              className={selectedChannel === channel ? "selected" : ""}
-            >
-              {channel}
-            </li>
-          ))}
-        </ul>
+
+        {view === "channels" ? (
+          <ul>
+            {channels.map((channel, index) => (
+              <li
+                key={index}
+                onClick={() => {
+                  setSelectedChannel(channel);
+                  setIsMenuOpen(false); // Fermer le menu burger après sélection
+                }}
+                className={selectedChannel === channel ? "selected" : ""}
+              >
+                {channel}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul>
+            {users.map((user, index) => (
+              <li key={index}>{user}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Section principale : Messages */}
