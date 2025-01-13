@@ -164,3 +164,35 @@ body, html {
 .small:hover {
   color: #7289da;
 }
+
+/* Media Queries pour rendre l'application responsive */
+@media (max-width: 768px) {
+  .app {
+    grid-template-columns: 1fr; /* Une seule colonne */
+    grid-template-rows: auto 1fr auto; /* Barre d'entrée en bas */
+  }
+
+  .sidebar-left,
+  .sidebar-right {
+    display: none; /* Masquer les barres latérales */
+  }
+
+  .main-section {
+    width: 100%; /* Prend toute la largeur de l'écran */
+    padding: 10px;
+  }
+
+  .input-section {
+    width: 100%; /* Prend toute la largeur de l'écran */
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .app {
+    grid-template-columns: 20% 60% 20%; /* Ajuster les colonnes */
+  }
+
+  .input-section {
+    width: 60%; /* Ajuster la largeur de la barre d'entrée */
+  }
+}
