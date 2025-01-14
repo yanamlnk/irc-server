@@ -1,4 +1,4 @@
-const { getUsersInChannel, getChannelsOfUser, addUserToChannel, createChannel, quitChannel, renameChannel, deleteChannel } = require('../services/channelService');
+const { getUsersInChannel, getChannelsOfUser, addUserToChannel, createChannel, quitChannel, renameChannel, deleteChannel, getChannels } = require('../services/channelService');
 
 function channelSocket(socket, io) {
 
@@ -15,13 +15,13 @@ function channelSocket(socket, io) {
 
     // list all users in a channel. Needs channelID. Returns list userIDs ('user_id') and names ('name')
     socket.on('listUsersInChannel', async (channelId, callback) => {
-      try {
-        const users = await getUsersInChannel(channelId);
-        callback({ success: true, users });
-      } catch (err) {
-        console.error(err);
-        callback({ success: false, message: err.message });
-      }
+        try {
+          const users = await getUsersInChannel(channelId);
+          callback({ success: true, users });
+        } catch (err) {
+          console.error(err);
+          callback({ success: false, message: err.message });
+        }
     });
   
     // Add user to the channel. returns the updated channel with new list of users.
@@ -51,10 +51,10 @@ function channelSocket(socket, io) {
         try {
             const updatedChannel = await quitChannel(userId, channelId);
             callback({ success: true, channel: updatedChannel });
-          } catch (err) {
+        } catch (err) {
             console.error(err);
             callback({ success: false, message: err.message });
-          }
+        }
     });
 
     //rename channel. takes channel id and new name. returns updated channel info
@@ -62,23 +62,35 @@ function channelSocket(socket, io) {
         try {
             const updatedChannel = await renameChannel(channelId, newName);
             callback({ success: true, channel: updatedChannel });
-          } catch (err) {
+        } catch (err) {
             console.error(err);
             callback({ success: false, message: err.message });
-          }
+        }
     });
 
 
     // delete channel. Takes channel id and return channel id and name that was deleted
     socket.on('deleteChannel', async (channelId, callback) => {
         try {
-          const result = await deleteChannel(channelId);
-          callback({ success: true, channel: result });
+            const result = await deleteChannel(channelId);
+            callback({ success: true, channel: result });
+        } catch (err) {
+            console.error(err);
+            callback({ success: false, message: err.message });
+        }
+    });
+
+    //list all channels. is string is specified, list channels that include the string provided. 
+    socket.on('listChannels', async (searchString, callback) => {
+        try {
+          const channels = await getChannels(searchString);
+          callback({ success: true, channels });
         } catch (err) {
           console.error(err);
           callback({ success: false, message: err.message });
         }
     });
-  }
+
+}
 
 module.exports = channelSocket;
