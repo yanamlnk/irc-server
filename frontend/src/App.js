@@ -1,6 +1,5 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
-import { executeCommand } from "./services/commandes";
 import "./App.css";
 
 const socket = io("http://localhost:3001"); // Remplacez par l'URL de votre serveur
@@ -18,11 +17,23 @@ const App = () => {
 
   useEffect(() => {
     if (isUsernameSet) {
-      console.log(username.id);
-      listChannelsOfUser(username.id);
-      // createChannel(username.id, "Généralee");
+      // On cherche si l'utilisateur existe déjà dans la base de données
+      if(UserExists(username))
+      {
+        // Si l'utilisateur existe déjà, on récupère les informations de l'utilisateur
+      }
+      else
+      {
+        // Si l'utilisateur n'existe pas, on crée un nouvel utilisateur et on l'associe par défaut au salon "Général"
+      }
+
+      connectionUser();
     }
   }, [isUsernameSet]);
+
+  const connectionUser = () => {
+    listChannelsOfUser(username.id);
+  }
 
   const handleSendMessage = () => {
     if (currentMessage.trim() !== "") {
@@ -37,32 +48,51 @@ const App = () => {
 
   const handleCommand = (command) => {
     const [cmd, ...args] = command.slice(1).split(" ");
-    const context = {
-      setNickname: (nickname) => setUsername(nickname),
-      listChannels: (filter) => listChannelsOfUser(username, filter),
-      createChannel: (channel) => createChannel(username, channel),
-      deleteChannel: (channel) => deleteChannel(channel),
-      joinChannel: (channel) => connectUserToChannel(username, channel),
-      quitChannel: (channel) => quitChannel(username, channel),
-      listUsers: () => listUsersInChannel(selectedChannel),
-      sendPrivateMessage: (nickname, message) => console.log(`Message privé à ${nickname}: ${message}`)
-    };
-    executeCommand(cmd, args, context);
+    switch (cmd) {
+      case "nick":
+        setNickname(args[0]);
+        break;
+      case "list":
+        listChannelsOfUser(username);
+        break;
+      case "create":
+        createChannel(username.id, args[0]);
+        break;
+      case "delete":
+        deleteChannel(args[0]);
+        break;
+      case "join":
+        connectUserToChannel(username.id, args[0]);
+        break;
+      case "quit":
+        quitChannel(username.id, args[0]);
+        break;
+      case "users":
+        listUsersInChannel();
+        break;
+      case "msg":
+        // sendPrivateMessage(args[0], args.slice(1).join(" "));
+        break;
+      default:
+        console.log("Commande inconnue");
+    }
   };
 
   const sendMessage = (message) => {
-    setMessages([...messages, { user: username, text: currentMessage, channel: selectedChannel }]);
+    setMessages([...messages, { user: username.name, text: currentMessage, channel: selectedChannel }]);
   };
 
   const handleSetUsername = (name) => {
     if (!name) {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
-    /* TEST  */
+
     /*
-    id = 67851a436bb2fce92a835c0f
-    name = Stete test
+    TEST
+      id = 67851a436bb2fce92a835c0f
+      name = Stete test
     */
+
    setUsername({
     id: "67851a5c62459a1ecaf85957",
     name: "Yaya test"
@@ -71,12 +101,28 @@ const App = () => {
     setIsUsernameSet(true);
   };
 
+
+  const UserExists = (username) => {
+    // Exemple d'utilisation de l'événement "UserExists"
+
+    // socket.emit("UserExists", username, (response) => {
+    //   if (response.success) {
+    //     console.log("UserExists response :", response);
+    //   } else {
+    //     console.error(response.message);
+    //   }
+    // });
+  }
+
+  const setNickname = (newName) => {
+    // Exemple d'utilisation de l'événement "setNickname"
+  };
+
   const listChannelsOfUser = (userId, filter = "") => {
-    console.log("before listChannelsOfUser :", userId);
     socket.emit("listChannelsOfUser", userId, (response) => {
       if (response.success) {
-        setChannels(response.channels.filter(channel => channel.name.includes(filter)));
-        console.log("after listChannelsOfUser :");
+        console.log("listChannelsOfUser response :", response);
+        setChannels(response.channels);
         console.log(response);
       } else {
         console.error(response.message);
@@ -135,10 +181,11 @@ const App = () => {
     });
   };
 
-  const deleteChannel = (channelId) => {
+  const deleteChannel = (channelName) => {
+    const channelId = channels.find((channel) => channel.name === channelName).channel_id;
     socket.emit("deleteChannel", channelId, (response) => {
       if (response.success) {
-        listChannelsOfUser(username);
+        setChannels(channels.filter((channel) => channel.channel_id !== channelId));
       } else {
         console.error(response.message);
       }
@@ -235,7 +282,7 @@ const App = () => {
           {messages
             .filter((message) => message.channel === selectedChannel)
             .map((message, index) => (
-              <div key={index} className={`message ${message.user === username ? "my-message" : ""}`}>
+              <div key={index} className={`message ${message.user === username.name ? "my-message" : ""}`}>
                 <strong>{message.user}:</strong> {message.text}
               </div>
             ))}
