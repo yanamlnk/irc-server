@@ -15,20 +15,19 @@ const App = () => {
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
   const [selectedChannel, setSelectedChannel] = useState("Général");
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Contrôle du menu burger
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleSendMessage = () => {
     if (currentMessage.trim() !== "") {
       if (currentMessage.startsWith("/")) {
         handleCommand(currentMessage);
       } else {
-        // Logique pour envoyer un message normal
         sendMessage(currentMessage);
       }
       setCurrentMessage("");
     }
   };
-  
+
   const handleCommand = (command) => {
     const [cmd, ...args] = command.slice(1).split(" ");
     const context = {
@@ -46,7 +45,6 @@ const App = () => {
 
   const sendMessage = (message) => {
     setMessages([...messages, { user: username, text: currentMessage, channel: selectedChannel }]);
-    // Logique pour envoyer un message normal
   };
 
   const handleSetUsername = (name) => {
@@ -55,6 +53,29 @@ const App = () => {
     }
     setUsername(name);
     setIsUsernameSet(true);
+  };
+
+  const handleRenameChannel = (channel) => {
+    const newName = prompt("Entrez le nouveau nom du canal :", channel);
+    if (newName && newName.trim() !== "") {
+      setChannels((prevChannels) =>
+        prevChannels.map((ch) => (ch === channel ? newName : ch))
+      );
+      console.log(`Canal renommé de ${channel} à ${newName}`);
+      if (selectedChannel === channel) {
+        setSelectedChannel(newName);
+      }
+    }
+  };
+
+  const handleDeleteChannel = (channel) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le canal "${channel}" ?`)) {
+      setChannels((prevChannels) => prevChannels.filter((ch) => ch !== channel));
+      console.log(`Canal supprimé : ${channel}`);
+      if (selectedChannel === channel) {
+        setSelectedChannel(channels[0] || ""); // Sélectionne un autre canal
+      }
+    }
   };
 
   if (!isUsernameSet) {
@@ -79,7 +100,6 @@ const App = () => {
 
   return (
     <div className="app">
-      {/* Bouton menu burger */}
       <button
         className="menu-burger"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -87,7 +107,6 @@ const App = () => {
         ☰
       </button>
 
-      {/* Barre latérale gauche */}
       <div className={`sidebar-left ${isMenuOpen ? "open" : ""}`}>
         <h3>Navigation</h3>
         <div className="navigation-buttons">
@@ -110,13 +129,28 @@ const App = () => {
             {channels.map((channel, index) => (
               <li
                 key={index}
-                onClick={() => {
-                  setSelectedChannel(channel);
-                  setIsMenuOpen(false); // Fermer le menu burger après sélection
-                }}
                 className={selectedChannel === channel ? "selected" : ""}
               >
-                {channel}
+                <span
+                  onClick={() => {
+                    setSelectedChannel(channel);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  {channel}
+                </span>
+                <div className="channel-actions">
+                  <i
+                    className="fas fa-edit small"
+                    title="Renommer"
+                    onClick={() => handleRenameChannel(channel)}
+                  ></i>
+                  <i
+                    className="fas fa-trash-alt small"
+                    title="Supprimer"
+                    onClick={() => handleDeleteChannel(channel)}
+                  ></i>
+                </div>
               </li>
             ))}
           </ul>
@@ -129,7 +163,6 @@ const App = () => {
         )}
       </div>
 
-      {/* Section principale : Messages */}
       <div className="main-section">
         <div className="messages">
           {messages
@@ -156,7 +189,6 @@ const App = () => {
         </div>
       </div>
 
-      {/* Barre latérale droite */}
       <div className="sidebar-right">
         <h3>Utilisateurs</h3>
         <ul>
