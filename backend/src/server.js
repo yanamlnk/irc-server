@@ -1,6 +1,10 @@
 const http = require('http');
 const app = require('./app');
 
+require('../models/User.js');
+require('../models/Channel.js');
+require('../models/Message.js');
+
 const { Server } = require('socket.io');
 const channelSocket = require('../sockets/channelSocket');
 
@@ -13,10 +17,17 @@ const io = new Server(server, {
 });
 
 io.on('connection', socket => {
-  console.log('a user connected');
-});
+  console.log('A user connected:', socket.id);
 
-// channelSocket(io);
+  // specific handlers
+  channelSocket(socket, io);
+  // userSocket(socket, io);
+  // messageSocket(socket, io);
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected:', socket.id);
+  });
+});
 
 const normalizePort = val => {
   const port = parseInt(val, 10);
