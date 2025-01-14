@@ -2,7 +2,7 @@ const http = require('http');
 const app = require('./app');
 
 const { Server } = require('socket.io');
-const channelSocket = require('./sockets/channelSocket');
+const channelSocket = require('../sockets/channelSocket');
 
 const server = http.createServer(app);
 const io = new Server(server, {
