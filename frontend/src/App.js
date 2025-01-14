@@ -1,21 +1,28 @@
-import React, { useState } from "react";
-import "./App.css";
+import React, { useState, useEffect, use } from "react";
+import io from "socket.io-client";
 import { executeCommand } from "./services/commandes";
+import "./App.css";
+
+const socket = io("http://localhost:3001"); // Remplacez par l'URL de votre serveur
 
 const App = () => {
-  const [channels, setChannels] = useState(["Général", "Gaming", "Tech", "Random"]);
-  const [users, setUsers] = useState(["Alice", "Bob", "Charlie", "Eve"]);
-  const [messages, setMessages] = useState([
-    { user: "Alice", text: "Salut tout le monde !", channel: "Général" },
-    { user: "Bob", text: "Hello !", channel: "Général" },
-    { user: "Charlie", text: "Ça va ?", channel: "Général" },
-  ]);
   const [username, setUsername] = useState("");
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
   const [selectedChannel, setSelectedChannel] = useState("Général");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [channels, setChannels] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    if (isUsernameSet) {
+      console.log(username.id);
+      listChannelsOfUser(username.id);
+      // createChannel(username.id, "Généralee");
+    }
+  }, [isUsernameSet]);
 
   const handleSendMessage = () => {
     if (currentMessage.trim() !== "") {
@@ -32,12 +39,12 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     const context = {
       setNickname: (nickname) => setUsername(nickname),
-      listChannels: (filter) => console.log(`Liste des canaux${filter ? ` avec filtre: ${filter}` : ""}`),
-      createChannel: (channel) => console.log(`Canal créé: ${channel}`),
-      deleteChannel: (channel) => console.log(`Canal supprimé: ${channel}`),
-      joinChannel: (channel) => console.log(`Rejoint le canal: ${channel}`),
-      quitChannel: (channel) => console.log(`Quitte le canal: ${channel}`),
-      listUsers: () => console.log("Liste des utilisateurs dans le canal"),
+      listChannels: (filter) => listChannelsOfUser(username, filter),
+      createChannel: (channel) => createChannel(username, channel),
+      deleteChannel: (channel) => deleteChannel(channel),
+      joinChannel: (channel) => connectUserToChannel(username, channel),
+      quitChannel: (channel) => quitChannel(username, channel),
+      listUsers: () => listUsersInChannel(selectedChannel),
       sendPrivateMessage: (nickname, message) => console.log(`Message privé à ${nickname}: ${message}`)
     };
     executeCommand(cmd, args, context);
@@ -51,31 +58,91 @@ const App = () => {
     if (!name) {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
-    setUsername(name);
+    /* TEST  */
+    /*
+    id = 67851a436bb2fce92a835c0f
+    name = Stete test
+    */
+   setUsername({
+    id: "67851a5c62459a1ecaf85957",
+    name: "Yaya test"
+   });
+    // setUsername(name);
     setIsUsernameSet(true);
   };
 
-  const handleRenameChannel = (channel) => {
-    const newName = prompt("Entrez le nouveau nom du canal :", channel);
-    if (newName && newName.trim() !== "") {
-      setChannels((prevChannels) =>
-        prevChannels.map((ch) => (ch === channel ? newName : ch))
-      );
-      console.log(`Canal renommé de ${channel} à ${newName}`);
-      if (selectedChannel === channel) {
-        setSelectedChannel(newName);
+  const listChannelsOfUser = (userId, filter = "") => {
+    console.log("before listChannelsOfUser :", userId);
+    socket.emit("listChannelsOfUser", userId, (response) => {
+      if (response.success) {
+        setChannels(response.channels.filter(channel => channel.name.includes(filter)));
+        console.log("after listChannelsOfUser :");
+        console.log(response);
+      } else {
+        console.error(response.message);
       }
-    }
+    });
   };
 
-  const handleDeleteChannel = (channel) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le canal "${channel}" ?`)) {
-      setChannels((prevChannels) => prevChannels.filter((ch) => ch !== channel));
-      console.log(`Canal supprimé : ${channel}`);
-      if (selectedChannel === channel) {
-        setSelectedChannel(channels[0] || ""); // Sélectionne un autre canal
+  const listUsersInChannel = (channelId) => {
+    socket.emit("listUsersInChannel", channelId, (response) => {
+      if (response.success) {
+        setUsers(response.users);
+      } else {
+        console.error(response.message);
       }
-    }
+    });
+  };
+
+  const connectUserToChannel = (userId, channelId) => {
+    socket.emit("connectUserToChannel", { userId, channelId }, (response) => {
+      if (response.success) {
+        listChannelsOfUser(userId);
+      } else {
+        console.error(response.message);
+      }
+    });
+  };
+
+  const createChannel = (userId, name) => {
+    socket.emit("createChannel", { userId, name }, (response) => {
+      if (response.success) {
+        console.log("createChannel response :", response);
+        listChannelsOfUser(userId);
+      } else {
+        console.error(response.message);
+      }
+    });
+  };
+
+  const quitChannel = (userId, channelId) => {
+    socket.emit("quitChannel", { userId, channelId }, (response) => {
+      if (response.success) {
+        listChannelsOfUser(userId);
+      } else {
+        console.error(response.message);
+      }
+    });
+  };
+
+  const renameChannel = (channelId, newName) => {
+    socket.emit("renameChannel", { channelId, newName }, (response) => {
+      if (response.success) {
+        listChannelsOfUser(username);
+      } else {
+        console.error(response.message);
+      }
+    });
+  };
+
+  const deleteChannel = (channelId) => {
+    socket.emit("deleteChannel", channelId, (response) => {
+      if (response.success) {
+        listChannelsOfUser(username);
+      } else {
+        console.error(response.message);
+      }
+    });
   };
 
   if (!isUsernameSet) {
@@ -128,27 +195,27 @@ const App = () => {
           <ul>
             {channels.map((channel, index) => (
               <li
-                key={index}
-                className={selectedChannel === channel ? "selected" : ""}
+                key={channel.channel_id || index} // Utilisez une clé unique (id) si disponible
+                className={selectedChannel === channel.name ? "selected" : ""}
               >
                 <span
                   onClick={() => {
-                    setSelectedChannel(channel);
-                    setIsMenuOpen(false);
+                    setSelectedChannel(channel.name); // Sélectionnez le nom du canal
+                    setIsMenuOpen(false); // Fermez le menu burger
                   }}
                 >
-                  {channel}
+                  {channel.name} {/* Affichez le nom du canal */}
                 </span>
                 <div className="channel-actions">
                   <i
                     className="fas fa-edit small"
                     title="Renommer"
-                    onClick={() => handleRenameChannel(channel)}
+                    onClick={() => renameChannel(channel.channel_id, "NouveauNom")} // Passez l'ID du canal
                   ></i>
                   <i
                     className="fas fa-trash-alt small"
                     title="Supprimer"
-                    onClick={() => handleDeleteChannel(channel)}
+                    onClick={() => deleteChannel(channel.channel_id)} // Passez l'ID du canal
                   ></i>
                 </div>
               </li>
