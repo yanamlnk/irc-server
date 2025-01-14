@@ -35,10 +35,21 @@ async function getChannelsOfUser(userID) {
 }
 
 //add user to channel
-async function addUserToChannel(userId, channelId) {
+async function joinChannel(userId, channelName) {
     try {
+        // if (!channelName.startsWith('#')) {
+        //     channelName = '#' + channelName;
+        // }
+
+        console.log(`Searching for channel with name: ${channelName}`);
+        const channel = await Channel.findOne({ name: channelName });
+
+        if (!channel) {
+            throw new Error('Channel not found');
+        }
+
         const updatedChannel = await Channel.findByIdAndUpdate(
-          channelId,
+          channel._id,
           { $addToSet: { users: userId } },
           { new: true }
         ).populate('users', 'name');
@@ -66,7 +77,9 @@ async function addUserToChannel(userId, channelId) {
 // create channel
 async function createChannel(userID, name) {
     try {
-        const newChannel = new Channel({ name: name, users: [] });
+        const formattedName = name.startsWith('#') ? name : `#${name}`;
+
+        const newChannel = new Channel({ name: formattedName, users: [] });
         const savedChannel = await newChannel.save();
     
         const updatedChannel = await addUserToChannel(userID, savedChannel._id);
@@ -175,7 +188,7 @@ async function getChannels(searchString = '') {
 module.exports = {
     getUsersInChannel,
     getChannelsOfUser,
-    addUserToChannel,
+    joinChannel,
     createChannel,
     quitChannel,
     renameChannel,

@@ -1,4 +1,4 @@
-const { getUsersInChannel, getChannelsOfUser, addUserToChannel, createChannel, quitChannel, renameChannel, deleteChannel, getChannels } = require('../services/channelService');
+const { getUsersInChannel, getChannelsOfUser, joinChannel, createChannel, quitChannel, renameChannel, deleteChannel, getChannels } = require('../services/channelService');
 
 function channelSocket(socket, io) {
 
@@ -25,9 +25,25 @@ function channelSocket(socket, io) {
     });
   
     // Add user to the channel. returns the updated channel with new list of users.
-    socket.on('connectUserToChannel', async ({ userId, channelId }, callback) => {
+    socket.on('joinChannel', async ({ userId, channelName }, callback) => {
         try {
-          const updatedChannel = await addUserToChannel(userId, channelId);
+          const updatedChannel = await joinChannel(userId, channelName);
+          const channelId = updatedChannel.channel_id;
+          let userName = '';
+
+          for (const user of updatedChannel.users) {
+            if (user.user_id.toString() === userId) {
+                userName = user.name;
+            }
+          }
+
+          socket.join(channelId);
+          io.to(channelId).emit('userJoinedChannel', {
+            userId,
+            channelId,
+            userName: userName,
+          });
+
           callback({ success: true, channel: updatedChannel });
         } catch (err) {
           console.error(err);
@@ -39,6 +55,7 @@ function channelSocket(socket, io) {
     socket.on('createChannel', async ({ userId, name }, callback) => {
         try {
             const newChannel = await createChannel(userId, name);
+            socket.join(newChannel.channel_id);
             callback({ success: true, channel: newChannel });
         } catch (err) {
             console.error(err);
@@ -50,6 +67,22 @@ function channelSocket(socket, io) {
     socket.on('quitChannel', async ({ userId, channelId }, callback) => {
         try {
             const updatedChannel = await quitChannel(userId, channelId);
+            socket.leave(channelId);
+
+            let userName = '';
+
+            for (const user of updatedChannel.users) {
+              if (user.user_id.toString() === userId) {
+                userName = user.name;
+              }
+            }
+
+            io.to(channelId).emit('userLeftChannel', {
+              userId,
+              channelId,
+              userName: userName,
+            });
+
             callback({ success: true, channel: updatedChannel });
         } catch (err) {
             console.error(err);
@@ -61,6 +94,9 @@ function channelSocket(socket, io) {
     socket.on('renameChannel', async ({channelId, newName}, callback) => {
         try {
             const updatedChannel = await renameChannel(channelId, newName);
+
+            io.to(channelId).emit('channelRenamed', { channel: updatedChannel });
+
             callback({ success: true, channel: updatedChannel });
         } catch (err) {
             console.error(err);
@@ -73,6 +109,10 @@ function channelSocket(socket, io) {
     socket.on('deleteChannel', async (channelId, callback) => {
         try {
             const result = await deleteChannel(channelId);
+
+            io.to(channelId).emit('channelDeleted', { channelId: result.channel_id });
+            io.in(channelId).socketsLeave(channelId);
+
             callback({ success: true, channel: result });
         } catch (err) {
             console.error(err);
