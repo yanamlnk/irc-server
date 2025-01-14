@@ -1,4 +1,4 @@
-const { getUsersInChannel, getChannelsOfUser } = require('../services/channelService');
+const { getUsersInChannel, getChannelsOfUser, addUserToChannel, createChannel, quitChannel, renameChannel, deleteChannel } = require('../services/channelService');
 
 function channelSocket(socket, io) {
 
@@ -24,7 +24,61 @@ function channelSocket(socket, io) {
       }
     });
   
-    // Add more channel-related events here
+    // Add user to the channel. returns the updated channel with new list of users.
+    socket.on('connectUserToChannel', async ({ userId, channelId }, callback) => {
+        try {
+          const updatedChannel = await addUserToChannel(userId, channelId);
+          callback({ success: true, channel: updatedChannel });
+        } catch (err) {
+          console.error(err);
+          callback({ success: false, message: err.message });
+        }
+      });
+
+    //create channel with the given name. Returns the new channel. Automatically add a user who created a channel to the channel
+    socket.on('createChannel', async ({ userId, name }, callback) => {
+        try {
+            const newChannel = await createChannel(userId, name);
+            callback({ success: true, channel: newChannel });
+        } catch (err) {
+            console.error(err);
+            callback({ success: false, message: err.message });
+        }
+    });
+
+    //quit channel. takes userid and channel id. returns new updated channel info
+    socket.on('quitChannel', async ({ userId, channelId }, callback) => {
+        try {
+            const updatedChannel = await quitChannel(userId, channelId);
+            callback({ success: true, channel: updatedChannel });
+          } catch (err) {
+            console.error(err);
+            callback({ success: false, message: err.message });
+          }
+    });
+
+    //rename channel. takes channel id and new name. returns updated channel info
+    socket.on('renameChannel', async ({channelId, newName}, callback) => {
+        try {
+            const updatedChannel = await renameChannel(channelId, newName);
+            callback({ success: true, channel: updatedChannel });
+          } catch (err) {
+            console.error(err);
+            callback({ success: false, message: err.message });
+          }
+    });
+
+
+    // delete channel. Takes channel id and return channel id and name that was deleted
+    socket.on('deleteChannel', async (channelId, callback) => {
+        try {
+          const result = await deleteChannel(channelId);
+          callback({ success: true, channel: result });
+        } catch (err) {
+          console.error(err);
+          callback({ success: false, message: err.message });
+        }
+    });
   }
 
 module.exports = channelSocket;
