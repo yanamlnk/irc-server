@@ -21,8 +21,8 @@ io.on('connection', socket => {
 
   // specific handlers
   channelSocket(socket, io);
-  // userSocket(socket, io);
-  // messageSocket(socket, io);
+  userSocket(socket, io);
+  messageSocket(socket, io);
 
   socket.on('disconnect', () => {
     console.log('A user disconnected:', socket.id);
