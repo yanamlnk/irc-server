@@ -3,18 +3,18 @@ const Channel = require('../models/Channel');
 
 // return all users' names in a channel
 async function getUsersInChannel(channelId) {
-  if (!mongoose.Types.ObjectId.isValid(channelId)) {
-    throw new Error('Invalid channel ID');
-  }
+    if (!mongoose.Types.ObjectId.isValid(channelId)) {
+      throw new Error('Invalid channel ID');
+    }
 
-  const channel = await Channel.findById(channelId).populate('users', 'name');
+    const channel = await Channel.findById(channelId).populate('users', 'name');
 //   if (!channel) {
 //     throw new Error('Users not found');
 //   }
-  return channel.users.map(user => ({
-    user_id: user._id,
-    name: user.name,
-  }));
+    return channel.users.map(user => ({
+      user_id: user._id,
+      name: user.name,
+    }));
 }
 
 // retuns all channels where ther user is present
@@ -35,47 +35,60 @@ async function getChannelsOfUser(userID) {
 }
 
 //add user to channel
-async function addUserToChannel(userId, channelId) {
+async function joinChannel(userId, channelName) {
     try {
-      const updatedChannel = await Channel.findByIdAndUpdate(
-        channelId,
-        { $addToSet: { users: userId } },
-        { new: true }
-      ).populate('users', 'name');
-  
-      if (!updatedChannel) {
-        throw new Error('Channel not found');
-      }
-  
-      const channelWithMappedUsers = {
-        channel_id: updatedChannel._id,
-        name: updatedChannel.name,
-        users: updatedChannel.users.map(user => ({
-          user_id: user._id,
-          name: user.name,
-        })),
-      };
+        // if (!channelName.startsWith('#')) {
+        //     channelName = '#' + channelName;
+        // }
 
-      return channelWithMappedUsers;
+        console.log(`Searching for channel with name: ${channelName}`);
+        const channel = await Channel.findOne({ name: channelName });
+
+        if (!channel) {
+            throw new Error('Channel not found');
+        }
+
+        const updatedChannel = await Channel.findByIdAndUpdate(
+          channel._id,
+          { $addToSet: { users: userId } },
+          { new: true }
+        ).populate('users', 'name');
+  
+        if (!updatedChannel) {
+          throw new Error('Channel not found');
+        }
+  
+        const channelWithMappedUsers = {
+          channel_id: updatedChannel._id,
+          name: updatedChannel.name,
+          users: updatedChannel.users.map(user => ({
+            user_id: user._id,
+            name: user.name,
+          })),
+        };
+
+        return channelWithMappedUsers;
     } catch (err) {
-      console.error('Error adding user to channel:', err);
-      throw err;
+        console.error('Error adding user to channel:', err);
+        throw err;
     }
-  }
+}
 
 // create channel
 async function createChannel(userID, name) {
     try {
-        const newChannel = new Channel({ name: name, users: [] });
+        const formattedName = name.startsWith('#') ? name : `#${name}`;
+
+        const newChannel = new Channel({ name: formattedName, users: [] });
         const savedChannel = await newChannel.save();
     
         const updatedChannel = await addUserToChannel(userID, savedChannel._id);
     
         return updatedChannel;
-      } catch (err) {
+    } catch (err) {
         console.error('Error creating channel with user:', err);
         throw err;
-      }
+    }
 }  
 
 // quit channel
@@ -99,12 +112,13 @@ async function quitChannel(userId, channelId) {
             name: user.name,
           })),
         };
-      } catch (err) {
+    } catch (err) {
         console.error('Error removing user from channel:', err);
         throw err;
-      }
+    }
 }
 
+//method to rename a channel
 async function renameChannel(channelId, newName) {
     try {
         const updatedChannel = await Channel.findByIdAndUpdate(
@@ -125,36 +139,59 @@ async function renameChannel(channelId, newName) {
             name: user.name,
           })),
         };
-      } catch (err) {
+    } catch (err) {
         console.error('Error renaming channel:', err);
         throw err;
-      }
+    }
 }
 
+// delete channel
 async function deleteChannel(channelId) {
     try {
-      const deletedChannel = await Channel.findByIdAndDelete(channelId);
+        const deletedChannel = await Channel.findByIdAndDelete(channelId);
   
-      if (!deletedChannel) {
-        throw new Error('Channel not found');
-      }
+        if (!deletedChannel) {
+          throw new Error('Channel not found');
+        }
   
-      return {
-        channel_id: deletedChannel._id,
-        name: deletedChannel.name,
-      };
+        return {
+          channel_id: deletedChannel._id,
+          name: deletedChannel.name,
+        };
     } catch (err) {
-      console.error('Error deleting channel:', err);
-      throw err;
+        console.error('Error deleting channel:', err);
+        throw err;
+    }
+}
+
+//list al channels. if string is specified, return channels with this string included (case-insesnsitive)
+async function getChannels(searchString = '') {
+    try {
+        let query = {};
+  
+        if (searchString) {
+          query.name = { $regex: searchString, $options: 'i' };
+        }
+  
+        const channels = await Channel.find(query);
+  
+        return channels.map(channel => ({
+          channel_id: channel._id,
+          name: channel.name,
+        }));
+    } catch (err) {
+        console.error('Error fetching channels:', err);
+        throw err;
     }
 }
 
 module.exports = {
-  getUsersInChannel,
-  getChannelsOfUser,
-  addUserToChannel,
-  createChannel,
-  quitChannel,
-  renameChannel,
-  deleteChannel,
+    getUsersInChannel,
+    getChannelsOfUser,
+    joinChannel,
+    createChannel,
+    quitChannel,
+    renameChannel,
+    deleteChannel,
+    getChannels,
 };
