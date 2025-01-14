@@ -109,7 +109,7 @@ const App = () => {
 
       <div className={`sidebar-left ${isMenuOpen ? "open" : ""}`}>
         <h3>Navigation</h3>
-        <div className="navigation-buttons">
+        {/* <div className="navigation-buttons">
           <button
             className={view === "channels" ? "active" : ""}
             onClick={() => setView("channels")}
@@ -122,7 +122,7 @@ const App = () => {
           >
             Discussions
           </button>
-        </div>
+        </div> */}
 
         {view === "channels" ? (
           <ul>
