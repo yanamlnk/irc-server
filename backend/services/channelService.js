@@ -82,7 +82,7 @@ async function createChannel(userID, name) {
         const newChannel = new Channel({ name: formattedName, users: [] });
         const savedChannel = await newChannel.save();
     
-        const updatedChannel = await addUserToChannel(userID, savedChannel._id);
+        const updatedChannel = await joinChannel(userID, savedChannel.name);
     
         return updatedChannel;
     } catch (err) {
