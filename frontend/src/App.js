@@ -33,8 +33,10 @@ const App = () => {
 
   useEffect(() => {
     // à chaque fois que le canal sélectionné change, on récupère les utilisateurs du canal
-    listUsersInChannel(selectedChannel);
-  }, [selectedChannel]);
+    if (channels.length > 0) {
+      listUsersInChannel();
+    }
+  }, [selectedChannel, channels]);
 
   useEffect(() => {
     socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
@@ -84,7 +86,7 @@ const App = () => {
         quitChannel(username.id, args[0]);
         break;
       case "users":
-        listUsersInChannel();
+        listUsersInChannel(true);
         break;
       case "msg":
         // sendPrivateMessage(args[0], args.slice(1).join(" "));
@@ -158,10 +160,16 @@ const App = () => {
     });
   };
 
-  const listUsersInChannel = (channelId) => {
+  const listUsersInChannel = (requestCommand = false) => {
+    const channelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
     socket.emit("listUsersInChannel", channelId, (response) => {
       if (response.success) {
-        console.log("listUsersInChannel response :", response);
+        if(requestCommand) {
+          setMessages([
+            ...messages,
+            { user: "Bot", text: `Liste des utilisateurs du salon: ${response.users.map((user) => user.name).join(", ")}`, channel: selectedChannel },
+          ]);
+        }
         setUsers(response.users);
       } else {
         console.error(response.message);
@@ -351,7 +359,7 @@ const App = () => {
         <h3>Utilisateurs</h3>
         <ul>
           {users.map((user, index) => (
-            <li key={index}>{user}</li>
+            <li key={user.user_id || index}>{user.name}</li>
           ))}
         </ul>
       </div>
