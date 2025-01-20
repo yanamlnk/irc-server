@@ -9,7 +9,7 @@ const App = () => {
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
-  const [selectedChannel, setSelectedChannel] = useState("Général");
+  const [selectedChannel, setSelectedChannel] = useState("General");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [channels, setChannels] = useState([]);
   const [users, setUsers] = useState([]);
@@ -31,8 +31,24 @@ const App = () => {
     }
   }, [isUsernameSet]);
 
+  useEffect(() => {
+    // à chaque fois que le canal sélectionné change, on récupère les utilisateurs du canal
+    listUsersInChannel(selectedChannel);
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
+      alert(`${userName} a rejoint le channel ${channelId}`);
+    });
+
+    return () => {
+      socket.off('userJoinedChannel');
+    };
+  }, []);
+
   const connectionUser = () => {
     listChannelsOfUser(username.id);
+    joinChannel(username.id, "General");
   }
 
   const handleSendMessage = () => {
@@ -62,7 +78,7 @@ const App = () => {
         deleteChannel(args[0], "name");
         break;
       case "join":
-        connectUserToChannel(username.id, args[0]);
+        joinChannel(username.id, args[0]);
         break;
       case "quit":
         quitChannel(username.id, args[0]);
@@ -122,7 +138,10 @@ const App = () => {
     // Exemple d'utilisation de l'événement "listChannels"
     // socket.emit("listChannels", filter, (response) => {
     //   if (response.success) {
-    //     console.log("listChannels response :", response);
+    // setMessages([
+    //   ...messages,
+    //   { user: "Bot", text: `Liste des salons: ${response.channels.map((channel) => channel.name).join(", ")}`, channel: selectedChannel },
+    // ]);
     //   } else {
     //     console.error(response.message);
     //   }
@@ -132,9 +151,7 @@ const App = () => {
   const listChannelsOfUser = (userId, filter = "") => {
     socket.emit("listChannelsOfUser", userId, (response) => {
       if (response.success) {
-        console.log("listChannelsOfUser response :", response);
         setChannels(response.channels);
-        console.log(response);
       } else {
         console.error(response.message);
       }
@@ -144,6 +161,7 @@ const App = () => {
   const listUsersInChannel = (channelId) => {
     socket.emit("listUsersInChannel", channelId, (response) => {
       if (response.success) {
+        console.log("listUsersInChannel response :", response);
         setUsers(response.users);
       } else {
         console.error(response.message);
@@ -151,12 +169,11 @@ const App = () => {
     });
   };
 
-  const connectUserToChannel = (userId, channelName) => {
-    // Depuis un nom de canal on récupère l'ID du canal
-    // A FAIRE
-    socket.emit("connectUserToChannel", { userId, channelId }, (response) => {
+  const joinChannel = (userId, channelName) => {
+    socket.emit("joinChannel", { userId, channelName }, (response) => {
       if (response.success) {
         listChannelsOfUser(userId);
+        setSelectedChannel(channelName);
       } else {
         console.error(response.message);
       }
@@ -175,8 +192,8 @@ const App = () => {
   };
 
   const quitChannel = (userId, channelName) => {
-    // Depuis un nom de canal on récupère l'ID du canal
-    // A FAIRE
+    // A partir du nom du canal on récupère l'ID du canal
+    const channelId = channels.find((channel) => channel.name === channelName).channel_id;
     socket.emit("quitChannel", { userId, channelId }, (response) => {
       if (response.success) {
         listChannelsOfUser(userId);
