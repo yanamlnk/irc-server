@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import "./App.css";
 
-const socket = io("http://localhost:3001"); // Remplacez par l'URL de votre serveur
+const socket = io("http://localhost:3001");
 
 const App = () => {
   const [username, setUsername] = useState("");
@@ -53,13 +53,13 @@ const App = () => {
         setNickname(args[0]);
         break;
       case "list":
-        listChannelsOfUser(username);
+        listChannels(args[0]);
         break;
       case "create":
         createChannel(username.id, args[0]);
         break;
       case "delete":
-        deleteChannel(args[0]);
+        deleteChannel(args[0], "name");
         break;
       case "join":
         connectUserToChannel(username.id, args[0]);
@@ -118,6 +118,17 @@ const App = () => {
     // Exemple d'utilisation de l'événement "setNickname"
   };
 
+  const listChannels = (filter) => {
+    // Exemple d'utilisation de l'événement "listChannels"
+    // socket.emit("listChannels", filter, (response) => {
+    //   if (response.success) {
+    //     console.log("listChannels response :", response);
+    //   } else {
+    //     console.error(response.message);
+    //   }
+    // });
+  }
+
   const listChannelsOfUser = (userId, filter = "") => {
     socket.emit("listChannelsOfUser", userId, (response) => {
       if (response.success) {
@@ -140,7 +151,9 @@ const App = () => {
     });
   };
 
-  const connectUserToChannel = (userId, channelId) => {
+  const connectUserToChannel = (userId, channelName) => {
+    // Depuis un nom de canal on récupère l'ID du canal
+    // A FAIRE
     socket.emit("connectUserToChannel", { userId, channelId }, (response) => {
       if (response.success) {
         listChannelsOfUser(userId);
@@ -161,7 +174,9 @@ const App = () => {
     });
   };
 
-  const quitChannel = (userId, channelId) => {
+  const quitChannel = (userId, channelName) => {
+    // Depuis un nom de canal on récupère l'ID du canal
+    // A FAIRE
     socket.emit("quitChannel", { userId, channelId }, (response) => {
       if (response.success) {
         listChannelsOfUser(userId);
@@ -171,18 +186,30 @@ const App = () => {
     });
   };
 
-  const renameChannel = (channelId, newName) => {
-    socket.emit("renameChannel", { channelId, newName }, (response) => {
-      if (response.success) {
-        listChannelsOfUser(username);
-      } else {
-        console.error(response.message);
-      }
-    });
+  const renameChannel = (channelId) => {
+    let newName = prompt("Entrez le nouveau nom du salon");
+    if (newName) {
+      socket.emit("renameChannel", { channelId, newName }, (response) => {
+        if (response.success) {
+          setChannels(
+            channels.map((channel) =>
+              channel.channel_id === channelId ? { ...channel, name: newName } : channel
+            )
+          );
+        } else {
+          console.error(response.message);
+        }
+      });
+    }
   };
 
-  const deleteChannel = (channelName) => {
-    const channelId = channels.find((channel) => channel.name === channelName).channel_id;
+  const deleteChannel = (channelId, type = "id") => {
+    if (type === "name") {
+      const channel = channels.find((channel) => channel.name.toLowerCase().replace(/\s/g, "") === channelId.toLowerCase().replace(/\s/g, ""));
+      if (channel) {
+        channelId = channel.channel_id;
+      }
+    }
     socket.emit("deleteChannel", channelId, (response) => {
       if (response.success) {
         setChannels(channels.filter((channel) => channel.channel_id !== channelId));
@@ -257,7 +284,7 @@ const App = () => {
                   <i
                     className="fas fa-edit small"
                     title="Renommer"
-                    onClick={() => renameChannel(channel.channel_id, "NouveauNom")} // Passez l'ID du canal
+                    onClick={() => renameChannel(channel.channel_id)} // Passez l'ID du canal
                   ></i>
                   <i
                     className="fas fa-trash-alt small"
