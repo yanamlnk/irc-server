@@ -1,13 +1,13 @@
 import React from "react";
 
-const MainSection = ({ messages, selectedChannel, username, currentMessage, setCurrentMessage, handleSendMessage }) => {
+const MainSection = ({ messages, selectedChannel, currentUser, currentMessage, setCurrentMessage, handleSendMessage }) => {
   return (
     <div className="main-section">
       <div className="messages">
         {messages
           .filter((message) => message.channel === selectedChannel)
           .map((message, index) => (
-            <div key={index} className={`message ${message.user === username.name ? "my-message" : ""}`}>
+            <div key={index} className={`message ${message.user === currentUser.name ? "my-message" : ""}`}>
               <strong>{message.user}:</strong> {message.text}
             </div>
           ))}

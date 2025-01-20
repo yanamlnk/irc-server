@@ -8,7 +8,7 @@ import { UserExists, setNickname, listChannels } from "./utils";
 import "./App.css";
 
 const App = () => {
-  const [username, setUsername] = useState("");
+  const [currentUser, setCurrentUser] = useState("");
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
@@ -20,7 +20,7 @@ const App = () => {
 
   useEffect(() => {
     if (isUsernameSet) {
-      if (UserExists(username)) {
+      if (UserExists(currentUser)) {
         // Si l'utilisateur existe déjà, on récupère les informations de l'utilisateur
       } else {
         // Si l'utilisateur n'existe pas, on crée un nouvel utilisateur et on l'associe par défaut au salon "Général"
@@ -37,7 +37,7 @@ const App = () => {
 
   useEffect(() => {
     socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-      if(userName != username.name){
+      if(userName != currentUser.name){
         alert(`${userName} a rejoint le channel !`);
       }
     });
@@ -48,8 +48,8 @@ const App = () => {
   }, []);
 
   const connectionUser = () => {
-    listChannelsOfUser(username.id);
-    joinChannel(username.id, "General");
+    listChannelsOfUser(currentUser.id);
+    joinChannel(currentUser.id, "General");
   };
 
   const handleSendMessage = () => {
@@ -73,16 +73,16 @@ const App = () => {
         listChannels(args[0], socket, setMessages, messages, selectedChannel);
         break;
       case "create":
-        createChannel(username.id, args[0]);
+        createChannel(currentUser.id, args[0]);
         break;
       case "delete":
         deleteChannel(args[0], "name");
         break;
       case "join":
-        joinChannel(username.id, args[0]);
+        joinChannel(currentUser.id, args[0]);
         break;
       case "quit":
-        quitChannel(username.id, args[0]);
+        quitChannel(currentUser.id, args[0]);
         break;
       case "users":
         listUsersInChannel(true);
@@ -96,7 +96,7 @@ const App = () => {
   };
 
   const sendMessage = (message) => {
-    setMessages([...messages, { user: username.name, text: currentMessage, channel: selectedChannel }]);
+    setMessages([...messages, { user: currentUser.name, text: currentMessage, channel: selectedChannel }]);
   };
 
   const handleSetUsername = (name) => {
@@ -104,7 +104,7 @@ const App = () => {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
 
-    setUsername({
+    setCurrentUser({
       id: "67851a5c62459a1ecaf85957",
       name: "Yaya test"
     });
@@ -227,7 +227,7 @@ const App = () => {
       <MainSection
         messages={messages}
         selectedChannel={selectedChannel}
-        username={username}
+        currentUser={currentUser}
         currentMessage={currentMessage}
         setCurrentMessage={setCurrentMessage}
         handleSendMessage={handleSendMessage}
