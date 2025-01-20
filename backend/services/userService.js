@@ -41,14 +41,14 @@ async function updateUserName(userId, newName) {
   }
 }
 
-async function updateUserSocket(userId, socketId) {
-  try {
-    return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
-  } catch (err) {
-    console.error('Error updating user socket:', err);
-    throw err;
-  }
-}
+// async function updateUserSocket(userId, socketId) {
+//   try {
+//     return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
+//   } catch (err) {
+//     console.error('Error updating user socket:', err);
+//     throw err;
+//   }
+// }
 
 async function getUsersInSameChannel(channelId, excludeUserId) {
   try {
@@ -67,4 +67,4 @@ async function getUsersInSameChannel(channelId, excludeUserId) {
   }
 }
 
-module.exports = { getUserByName, updateUserName, updateUserSocket, getUsersInSameChannel };
+module.exports = { getUserByName, updateUserName, getUsersInSameChannel };

@@ -34,6 +34,41 @@ function messageSocket(socket, io) {
     }
   });
 
+  //envoyer un message au channel
+  socket.on('channelMessage', async data => {
+    console.log('Received channel message:', data);
+    try {
+      const { text, channelId } = data;
+
+      if (!socket.userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const message = await messageService.saveMessage({
+        text,
+        sender: socket.userId,
+        recipient: channelId,
+        recipientType: 'Channel',
+        channelContext: channelId,
+      });
+      const messageData = {
+        ...message,
+        isPrivate: false,
+        channelId,
+      };
+
+      io.to(channelId).emit('newMessage', {
+        ...messageData,
+        isSent: true,
+      });
+
+      socket.emit('channelMessageResponse', { success: true, message: messageData });
+    } catch (err) {
+      console.error('Error in channelMessage:', err);
+      socket.emit('channelMessageResponse', { success: false, message: err.message });
+    }
+  });
+
   //envoyer un message privé
   socket.on('privateMessage', async data => {
     console.log('Received private message:', data);

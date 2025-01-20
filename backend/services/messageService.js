@@ -82,64 +82,88 @@ class MessageService {
     try {
       this.validateMessage(text, sender, recipient, channelContext);
 
-      let isPrivate = recipientType === 'User';
-
-      if (isPrivate) {
-        const senderObjectId = mongoose.Types.ObjectId.createFromHexString(sender);
-        const recipientObjectId =
-          typeof recipient === 'object'
-            ? recipient
-            : mongoose.Types.ObjectId.createFromHexString(recipient.toString());
-        const channelObjectId = mongoose.Types.ObjectId.createFromHexString(channelContext);
-
-        //d'abord on trouve le canal
-        const channel = await Channel.findById(channelObjectId);
-        console.log('Found channel:', {
-          id: channel?._id,
-          name: channel?.name,
-          numberOfUsers: channel?.users?.length,
-        });
+      if (recipientType === 'Channel') {
+        const channel = await Channel.findById(recipient);
 
         if (!channel) {
           throw new Error('Channel not found');
         }
 
-        //transforme les utilisateurs en string pour comparer
-        const channelUserIds = channel.users.map(id => id.toString());
-        console.log('Channel user IDs:', channelUserIds);
-        console.log('Checking for users:', {
-          sender: senderObjectId.toString(),
-          recipient: recipientObjectId.toString(),
-        });
-
-        // vérifie si les deux utilisateurs sont dans le channel
-        const senderInChannel = channelUserIds.includes(senderObjectId.toString());
-        const recipientInChannel = channelUserIds.includes(recipientObjectId.toString());
-
-        console.log('User presence:', {
-          senderInChannel,
-          recipientInChannel,
-        });
-
-        if (!senderInChannel || !recipientInChannel) {
-          throw new Error('Both users must be members of the channel');
+        const senderInChannel = channel.users.includes(sender);
+        if (!senderInChannel) {
+          throw new Error('Sender must be a member of the channel');
         }
-
         const message = new Message({
           text: text.trim(),
-          sender: senderObjectId,
-          recipient: recipientObjectId,
-          recipientType: 'User',
-          channelContext: channelObjectId,
+          sender,
+          recipient,
+          recipientType: 'Channel',
+          channelContext,
         });
 
         const savedMessage = await message.save();
-        console.log('Message saved:', savedMessage);
 
-        return await Message.findById(savedMessage._id)
-          .populate('sender', 'name')
-          .populate('recipient', 'name')
-          .lean();
+        return await Message.findById(savedMessage._id).populate('sender', 'name').lean();
+      } else {
+        let isPrivate = recipientType === 'User';
+
+        if (isPrivate) {
+          const senderObjectId = mongoose.Types.ObjectId.createFromHexString(sender);
+          const recipientObjectId =
+            typeof recipient === 'object'
+              ? recipient
+              : mongoose.Types.ObjectId.createFromHexString(recipient.toString());
+          const channelObjectId = mongoose.Types.ObjectId.createFromHexString(channelContext);
+
+          //d'abord on trouve le canal
+          const channel = await Channel.findById(channelObjectId);
+          console.log('Found channel:', {
+            id: channel?._id,
+            name: channel?.name,
+            numberOfUsers: channel?.users?.length,
+          });
+
+          if (!channel) {
+            throw new Error('Channel not found');
+          }
+
+          //transforme les utilisateurs en string pour comparer
+          const channelUserIds = channel.users.map(id => id.toString());
+          console.log('Channel user IDs:', channelUserIds);
+          console.log('Checking for users:', {
+            sender: senderObjectId.toString(),
+            recipient: recipientObjectId.toString(),
+          });
+
+          // vérifie si les deux utilisateurs sont dans le channel
+          const senderInChannel = channelUserIds.includes(senderObjectId.toString());
+          const recipientInChannel = channelUserIds.includes(recipientObjectId.toString());
+
+          console.log('User presence:', {
+            senderInChannel,
+            recipientInChannel,
+          });
+
+          if (!senderInChannel || !recipientInChannel) {
+            throw new Error('Both users must be members of the channel');
+          }
+
+          const message = new Message({
+            text: text.trim(),
+            sender: senderObjectId,
+            recipient: recipientObjectId,
+            recipientType: 'User',
+            channelContext: channelObjectId,
+          });
+
+          const savedMessage = await message.save();
+          console.log('Message saved:', savedMessage);
+
+          return await Message.findById(savedMessage._id)
+            .populate('sender', 'name')
+            .populate('recipient', 'name')
+            .lean();
+        }
       }
     } catch (err) {
       console.error('Error saving private message:', err);

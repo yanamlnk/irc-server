@@ -1,4 +1,4 @@
-const { getUserByName, updateUserName, updateUserSocket } = require('../services/userService');
+const { getUserByName, updateUserName } = require('../services/userService');
 const User = require('../models/User');
 const { getChannelsOfUser } = require('../services/channelService');
 
