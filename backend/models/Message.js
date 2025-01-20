@@ -13,6 +13,13 @@ const messageSchema = new mongoose.Schema({
     required: true,
     enum: ['User', 'Channel'],
   },
+  channelContext: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Channel',
+    required: function () {
+      return this.recipientType === 'User';
+    },
+  },
   timestamp: { type: Date, default: Date.now },
 });
 
