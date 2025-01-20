@@ -137,18 +137,17 @@ const App = () => {
   };
 
   const listChannels = (filter) => {
-    // Exemple d'utilisation de l'événement "listChannels"
-    // socket.emit("listChannels", filter, (response) => {
-    //   if (response.success) {
-    // setMessages([
-    //   ...messages,
-    //   { user: "Bot", text: `Liste des salons: ${response.channels.map((channel) => channel.name).join(", ")}`, channel: selectedChannel },
-    // ]);
-    //   } else {
-    //     console.error(response.message);
-    //   }
-    // });
-  }
+    socket.emit("listChannels", filter, (response) => {
+      if (response.success) {
+        setMessages([
+          ...messages,
+          { user: "Bot", text: `Liste des salons: ${response.channels.map((channel) => channel.name).join(", ")}`, channel: selectedChannel },
+        ]);
+      } else {
+        console.error(response.message);
+      }
+    });
+  };
 
   const listChannelsOfUser = (userId, filter = "") => {
     socket.emit("listChannelsOfUser", userId, (response) => {
