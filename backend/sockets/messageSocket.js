@@ -1,49 +1,57 @@
-const { getUserByName } = require('../services/userService');
 const { saveMessage } = require('../services/messageService');
+const { getUsersInChannel } = require('../services/channelService');
 
 function messageSocket(io, socket) {
   //envoyer un message privé
-  socket.on('privateMessage', async ({ text, to }) => {
+  socket.on('privateMessage', async ({ text, to, channelId }, callback) => {
     try {
-      const recipient = await getUserByName(to);
+      if (!socket.userId) {
+        throw new Error('User not authenticated');
+      }
+      m;
+      const usersInChannel = await getUsersInChannel(channelId);
+      const recipientInChannel = usersInChannel.find(u => u.name === to);
 
-      if (!recipient) {
-        socket.emit('error', { message: `User "${to}" does not exist` });
-        return;
+      if (!recipientInChannel) {
+        throw new Error('Recipient is not in this channel');
       }
 
-      //sauvegarder le message dans la db
       const message = await saveMessage({
         text,
         sender: socket.userId,
-        recipient: recipient._id,
+        recipient: recipientInChannel.user_id,
         recipientType: 'User',
-        channelId: socket.currentChannel,
+        channelContext: channelId,
       });
 
-      const populatedMessage = await message
-        .findById(message._id)
-        .populate('sender', 'name')
-        .populate('recipient', 'name');
+      const messageData = {
+        ...message,
+        isPrivate: true,
+        channelId,
+      };
 
-      //envoie le msg à l'utilisateur qui l'a envoyé pour la consistance dans l'UI
-      socket.emit('privateMessage', {
-        message: populatedMessage,
+      socket.emit('newMessage', {
+        ...messageData,
         isSent: true,
       });
 
-      //envoie le msg si l'utilisateur est en ligne
-      if (recipient.socketId) {
-        io.to(recipient.socketId).emit('privateMessage', {
-          message: populatedMessage,
+      if (recipientInChannel.socketId) {
+        io.to(recipientInChannel.socketId).emit('newMessage', {
+          ...messageData,
           isSent: false,
         });
       }
+
+      callback({ success: true, message: messageData });
     } catch (err) {
-      console.error('Error sending private message:', err);
-      socket.emit('error', { message: 'Error sending private message' });
+      callback({ success: false, message: err.message });
     }
   });
 }
 
 module.exports = messageSocket;
+
+// l'utilisateur choisit le nom -> socket enregistré
+// l'utilisateur rejoint le canal -> charge les messages du canal
+// les messages privés sont envoyés dans le contexte du canal actuel
+//les changements de nom sont propagés à tous les canaux concernés
