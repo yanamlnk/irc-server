@@ -13,7 +13,7 @@ function messageSocket(io, socket) {
         throw new Error('Recipient is not in this channel');
       }
 
-      const message = await messageService.saveMessage({
+      const message = await saveMessage({
         text,
         sender: socket.userId,
         recipient: recipientInChannel.user_id,
