@@ -47,3 +47,8 @@ function messageSocket(io, socket) {
 }
 
 module.exports = messageSocket;
+
+// l'utilisateur choisit le nom -> socket enregistré
+// l'utilisateur rejoint le canal -> charge les messages du canal
+// les messages privés sont envoyés dans le contexte du canal actuel
+//les changements de nom sont propagés à tous les canaux concernés
