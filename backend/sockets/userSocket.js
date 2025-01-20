@@ -53,4 +53,4 @@ function userSocket(socket) {
   });
 }
 
-module.exports = { userSocket };
+module.exports = userSocket;
