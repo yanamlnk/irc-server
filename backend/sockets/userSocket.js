@@ -1,4 +1,4 @@
-const { getUserByName, updateUserName } = require('../services/userService');
+const { getUserByName, updateUserName, updateUserSocket } = require('../services/userService');
 const User = require('../models/User');
 const { getChannelsOfUser } = require('../services/channelService');
 
@@ -8,7 +8,7 @@ function userSocket(socket) {
     try {
       const user = await getUserByName(name);
 
-      await userService.updateUserSocket(user._id, socket.id);
+      await updateUserSocket(user._id, socket.id);
 
       socket.userId = user._id;
       socket.userName = user.name;

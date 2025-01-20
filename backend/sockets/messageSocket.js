@@ -1,4 +1,3 @@
-const { getUserByName } = require('../services/userService');
 const { saveMessage } = require('../services/messageService');
 const { getUsersInChannel } = require('../services/channelService');
 
@@ -6,6 +5,10 @@ function messageSocket(io, socket) {
   //envoyer un message privé
   socket.on('privateMessage', async ({ text, to, channelId }, callback) => {
     try {
+      if (!socket.userId) {
+        throw new Error('User not authenticated');
+      }
+      m;
       const usersInChannel = await getUsersInChannel(channelId);
       const recipientInChannel = usersInChannel.find(u => u.name === to);
 
