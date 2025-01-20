@@ -7,6 +7,8 @@ require('../models/Message.js');
 
 const { Server } = require('socket.io');
 const channelSocket = require('../sockets/channelSocket');
+const userSocket = require('../sockets/userSocket');
+const messageSocket = require('../sockets/messageSocket');
 
 const server = http.createServer(app);
 const io = new Server(server, {

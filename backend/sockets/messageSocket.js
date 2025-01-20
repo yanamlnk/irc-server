@@ -2,8 +2,6 @@ const { getUserByName } = require('../services/userService');
 const { saveMessage } = require('../services/messageService');
 
 function messageSocket(io, socket) {
-  socket.currentChannel = null;
-
   //envoyer un message privé
   socket.on('privateMessage', async ({ text, to }) => {
     try {
@@ -36,7 +34,7 @@ function messageSocket(io, socket) {
 
       //envoie le msg si l'utilisateur est en ligne
       if (recipient.socketId) {
-        io.to(recipient.socketId).emit('private message', {
+        io.to(recipient.socketId).emit('privateMessage', {
           message: populatedMessage,
           isSent: false,
         });
@@ -48,4 +46,4 @@ function messageSocket(io, socket) {
   });
 }
 
-module.exports = { messageSocket };
+module.exports = messageSocket;
