@@ -1,8 +1,8 @@
-const { getUserByName, updateUserName, updateUserSocket } = require('../services/userService');
+const { getUserByName, updateUserName } = require('../services/userService');
 const User = require('../models/User');
 const { getChannelsOfUser } = require('../services/channelService');
 
-function userSocket(socket) {
+function userSocket(socket, io) {
   //choisir un nom d'utilisateur
   socket.on('chooseName', async (name, callback) => {
     try {
@@ -12,6 +12,9 @@ function userSocket(socket) {
 
       socket.userId = user._id;
       socket.userName = user.name;
+
+      const channels = await getChannelsOfUser(user._id);
+      channels.forEach(channel => socket.join(channel.channel_id));
 
       callback({ success: true, user: { id: user._id, name: user.name } });
     } catch (err) {
