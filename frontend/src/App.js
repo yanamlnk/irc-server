@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
-import io from "socket.io-client";
+import socket from "./socket";
+import UsernameForm from "./components/UsernameForm";
+import Sidebar from "./components/Sidebar";
+import MainSection from "./components/MainSection";
+import UserList from "./components/UserList";
+import { UserExists, setNickname, listChannels } from "./utils";
 import "./App.css";
 
-const socket = io("http://localhost:3001");
-
 const App = () => {
-  const [username, setUsername] = useState("");
+  const [currentUser, setCurrentUser] = useState("");
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
@@ -17,22 +20,17 @@ const App = () => {
 
   useEffect(() => {
     if (isUsernameSet) {
-      // On cherche si l'utilisateur existe déjà dans la base de données
-      if(UserExists(username))
-      {
-        // Si l'utilisateur existe déjà, on récupère les informations de l'utilisateur
-      }
-      else
-      {
+      if (UserExists(currentUser)) {
+        //
+      } else {
         // Si l'utilisateur n'existe pas, on crée un nouvel utilisateur et on l'associe par défaut au salon "Général"
       }
-
+      socket.emit('authenticate', { userId: currentUser.id });
       connectionUser();
     }
   }, [isUsernameSet]);
 
   useEffect(() => {
-    // à chaque fois que le canal sélectionné change, on récupère les utilisateurs du canal
     if (channels.length > 0) {
       listUsersInChannel();
     }
@@ -40,7 +38,9 @@ const App = () => {
 
   useEffect(() => {
     socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-      alert(`${userName} a rejoint le channel ${channelId}`);
+      if(userName != currentUser.name){
+        alert(`${userName} a rejoint le channel !`);
+      }
     });
 
     return () => {
@@ -49,9 +49,9 @@ const App = () => {
   }, []);
 
   const connectionUser = () => {
-    listChannelsOfUser(username.id);
-    joinChannel(username.id, "General");
-  }
+    listChannelsOfUser(currentUser.id);
+    joinChannel(currentUser.id, "General");
+  };
 
   const handleSendMessage = () => {
     if (currentMessage.trim() !== "") {
@@ -68,22 +68,22 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     switch (cmd) {
       case "nick":
-        setNickname(args[0]);
+        setNickname(args[0], socket, currentUser, setCurrentUser);
         break;
       case "list":
-        listChannels(args[0]);
+        listChannels(args[0], socket, setMessages, messages, selectedChannel);
         break;
       case "create":
-        createChannel(username.id, args[0]);
+        createChannel(currentUser.id, args[0]);
         break;
       case "delete":
         deleteChannel(args[0], "name");
         break;
       case "join":
-        joinChannel(username.id, args[0]);
+        joinChannel(currentUser.id, args[0]);
         break;
       case "quit":
-        quitChannel(username.id, args[0]);
+        quitChannel(currentUser.id, args[0]);
         break;
       case "users":
         listUsersInChannel(true);
@@ -97,7 +97,7 @@ const App = () => {
   };
 
   const sendMessage = (message) => {
-    setMessages([...messages, { user: username.name, text: currentMessage, channel: selectedChannel }]);
+    setMessages([...messages, { user: currentUser.name, text: currentMessage, channel: selectedChannel }]);
   };
 
   const handleSetUsername = (name) => {
@@ -105,48 +105,11 @@ const App = () => {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
 
-    /*
-    TEST
-      id = 67851a436bb2fce92a835c0f
-      name = Stete test
-    */
-
-   setUsername({
-    id: "67851a5c62459a1ecaf85957",
-    name: "Yaya test"
-   });
-    // setUsername(name);
-    setIsUsernameSet(true);
-  };
-
-
-  const UserExists = (username) => {
-    // Exemple d'utilisation de l'événement "UserExists"
-
-    // socket.emit("UserExists", username, (response) => {
-    //   if (response.success) {
-    //     console.log("UserExists response :", response);
-    //   } else {
-    //     console.error(response.message);
-    //   }
-    // });
-  }
-
-  const setNickname = (newName) => {
-    // Exemple d'utilisation de l'événement "setNickname"
-  };
-
-  const listChannels = (filter) => {
-    socket.emit("listChannels", filter, (response) => {
-      if (response.success) {
-        setMessages([
-          ...messages,
-          { user: "Bot", text: `Liste des salons: ${response.channels.map((channel) => channel.name).join(", ")}`, channel: selectedChannel },
-        ]);
-      } else {
-        console.error(response.message);
-      }
+    setCurrentUser({
+      id: "67851a5c62459a1ecaf85957",
+      name: "Yaya test"
     });
+    setIsUsernameSet(true);
   };
 
   const listChannelsOfUser = (userId, filter = "") => {
@@ -190,7 +153,6 @@ const App = () => {
   const createChannel = (userId, name) => {
     socket.emit("createChannel", { userId, name }, (response) => {
       if (response.success) {
-        console.log("createChannel response :", response);
         listChannelsOfUser(userId);
       } else {
         console.error(response.message);
@@ -199,7 +161,6 @@ const App = () => {
   };
 
   const quitChannel = (userId, channelName) => {
-    // A partir du nom du canal on récupère l'ID du canal
     const channelId = channels.find((channel) => channel.name === channelName).channel_id;
     socket.emit("quitChannel", { userId, channelId }, (response) => {
       if (response.success) {
@@ -244,124 +205,35 @@ const App = () => {
   };
 
   if (!isUsernameSet) {
-    return (
-      <div className="app">
-        <h1>Bienvenue !</h1>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSetUsername(e.target.elements.username.value);
-          }}
-        >
-          <input type="text" name="username" placeholder="Entrez votre nom d'utilisateur" />
-          <button type="submit">Valider</button>
-          <button type="button" onClick={() => handleSetUsername("")}>
-            Générer un nom aléatoire
-          </button>
-        </form>
-      </div>
-    );
+    return <UsernameForm handleSetUsername={handleSetUsername} />;
   }
 
   return (
     <div className="app">
-      <button
-        className="menu-burger"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-      >
+      <button className="menu-burger" onClick={() => setIsMenuOpen(!isMenuOpen)}>
         ☰
       </button>
-
-      <div className={`sidebar-left ${isMenuOpen ? "open" : ""}`}>
-        <h3>Navigation</h3>
-        {/* <div className="navigation-buttons">
-          <button
-            className={view === "channels" ? "active" : ""}
-            onClick={() => setView("channels")}
-          >
-            Salons
-          </button>
-          <button
-            className={view === "discussions" ? "active" : ""}
-            onClick={() => setView("discussions")}
-          >
-            Discussions
-          </button>
-        </div> */}
-
-        {view === "channels" ? (
-          <ul>
-            {channels.map((channel, index) => (
-              <li
-                key={channel.channel_id || index} // Utilisez une clé unique (id) si disponible
-                className={selectedChannel === channel.name ? "selected" : ""}
-              >
-                <span
-                  onClick={() => {
-                    setSelectedChannel(channel.name); // Sélectionnez le nom du canal
-                    setIsMenuOpen(false); // Fermez le menu burger
-                  }}
-                >
-                  {channel.name} {/* Affichez le nom du canal */}
-                </span>
-                <div className="channel-actions">
-                  <i
-                    className="fas fa-edit small"
-                    title="Renommer"
-                    onClick={() => renameChannel(channel.channel_id)} // Passez l'ID du canal
-                  ></i>
-                  <i
-                    className="fas fa-trash-alt small"
-                    title="Supprimer"
-                    onClick={() => deleteChannel(channel.channel_id)} // Passez l'ID du canal
-                  ></i>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <ul>
-            {users.map((user, index) => (
-              <li key={index}>{user}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="main-section">
-        <div className="messages">
-          {messages
-            .filter((message) => message.channel === selectedChannel)
-            .map((message, index) => (
-              <div key={index} className={`message ${message.user === username.name ? "my-message" : ""}`}>
-                <strong>{message.user}:</strong> {message.text}
-              </div>
-            ))}
-        </div>
-        <div className="input-section">
-          <input
-            type="text"
-            placeholder="Écris un message..."
-            value={currentMessage}
-            onChange={(e) => setCurrentMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSendMessage();
-              }
-            }}
-          />
-          <button onClick={handleSendMessage}>Envoyer</button>
-        </div>
-      </div>
-
-      <div className="sidebar-right">
-        <h3>Utilisateurs</h3>
-        <ul>
-          {users.map((user, index) => (
-            <li key={user.user_id || index}>{user.name}</li>
-          ))}
-        </ul>
-      </div>
+      <Sidebar
+        view={view}
+        setView={setView}
+        channels={channels}
+        selectedChannel={selectedChannel}
+        setSelectedChannel={setSelectedChannel}
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
+        renameChannel={renameChannel}
+        deleteChannel={deleteChannel}
+        users={users}
+      />
+      <MainSection
+        messages={messages}
+        selectedChannel={selectedChannel}
+        currentUser={currentUser}
+        currentMessage={currentMessage}
+        setCurrentMessage={setCurrentMessage}
+        handleSendMessage={handleSendMessage}
+      />
+      <UserList users={users} />
     </div>
   );
 };
