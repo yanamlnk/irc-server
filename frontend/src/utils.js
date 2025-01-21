@@ -9,7 +9,7 @@ export const UserExists = (username) => {
     // });
   };
   
-  export const setNickname = (newName, socket, currentUser, setCurrentUser) => {
+  export const setNickname = (newName, socket, currentUser, setUsers, setCurrentUser) => {
     socket.emit("changeName", { currentUserName: currentUser.name, newName }, (response) => {
       if (response.success) {
         setCurrentUser({ ...currentUser, name: response.newName });

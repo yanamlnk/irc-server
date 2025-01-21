@@ -68,7 +68,8 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     switch (cmd) {
       case "nick":
-        setNickname(args[0], socket, currentUser, setCurrentUser);
+        setNickname(args[0], socket, currentUser, setUsers, setCurrentUser);
+        listChannelsOfUser(currentUser.id);
         break;
       case "list":
         listChannels(args[0], socket, setMessages, messages, selectedChannel);
