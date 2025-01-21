@@ -1,47 +1,44 @@
 const { getUserByName, updateUserName } = require('../services/userService');
 const User = require('../models/User');
+const { getChannelsOfUser } = require('../services/channelService');
 
-function userSocket(socket) {
+function userSocket(socket, io) {
   //choisir un nom d'utilisateur
-  socket.on('chooseName', async name => {
+  socket.on('chooseName', async (name, callback) => {
     try {
       const user = await getUserByName(name);
 
-      if (!user) {
-        socket.emit('error', { message: 'User does not exist' });
-        return;
-      }
+      await updateUserSocket(user._id, socket.id);
 
-      //met à jour la socket id de l'user._id qui a été retrouvé dans la db avec la fonction getuserbyname
-      user = await user.findByIdAndUpdate(user._id, { socketId: socket.id }, { new: true });
-      //associer le socket.id a l'instance d'utilisateur permet au server d'envoyer des msgs au bon socket d'utilisateur ainsi que de persister les données
-      socket.userId = user._id; //identifier de façon unique l'utilisateur associé à cette connexion de socket, de façon à que le server sache quel utilisateur est connecté à ce socket
-      socket.userName = user.name; //garde le nom d'utilisateur associé à cette connexion de socket, plus facile de l'identifier que par l'id
+      socket.userId = user._id;
+      socket.userName = user.name;
 
-      socket.emit('name chosen', { userId: user._id, userName: user.name });
+      const channels = await getChannelsOfUser(user._id);
+      channels.forEach(channel => socket.join(channel.channel_id));
+
+      callback({ success: true, user: { id: user._id, name: user.name } });
     } catch (err) {
-      console.error('Error handling choose name:', err);
-      socket.emit('error', { message: 'Error choosing name' });
+      callback({ success: false, message: err.message });
     }
   });
 
-  socket.on('changeName', async ({ currentName, newName }) => {
+  socket.on('changeName', async ({ currentName, newName }, callback) => {
     try {
-      const user = await getUserByName(currentName);
+      const updatedUser = await updateUserName(socket.userId, newName);
+      socket.userName = newName;
 
-      if (!user) {
-        socket.emit('error', { message: 'Current user does not exist' });
-        return;
-      }
+      const userChannels = await getChannelsOfUser(socket.userId);
+      userChannels.forEach(channel => {
+        io.to(channel.channel_id).emit('userNameChanged', {
+          userId: socket.userId,
+          oldName: currentName,
+          newName: newName,
+        });
+      });
 
-      const updatedUser = await updateUserName(user._id, newName);
-
-      // mettre à jour le nom associé au socket
-      console.log(`User "${currentName}" changed name to "${newName}"`);
-      socket.emit('name changed', { newName });
+      callback({ success: true, newName });
     } catch (err) {
-      console.error('Error changing name:', err);
-      socket.emit('error', { message: 'Error changing name' });
+      callback({ success: false, message: err.message });
     }
   });
 
