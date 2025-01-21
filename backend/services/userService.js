@@ -41,30 +41,30 @@ async function updateUserName(userId, newName) {
   }
 }
 
-async function updateUserSocket(userId, socketId) {
-  try {
-    return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
-  } catch (err) {
-    console.error('Error updating user socket:', err);
-    throw err;
-  }
-}
+// async function updateUserSocket(userId, socketId) {
+//   try {
+//     return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
+//   } catch (err) {
+//     console.error('Error updating user socket:', err);
+//     throw err;
+//   }
+// }
 
-async function getUsersInSameChannel(channelId, excludeUserId) {
-  try {
-    const channel = await channel.findById(channelId).populate('users', 'name socketId');
+// async function getUsersInSameChannel(channelId, excludeUserId) {
+//   try {
+//     const channel = await channel.findById(channelId).populate('users', 'name socketId');
 
-    return channel.users
-      .filter(user => user._id.toString() !== excludeUserId)
-      .map(user => ({
-        id: user._id,
-        name: user.name,
-        socketId: user.socketId,
-      }));
-  } catch (err) {
-    console.error('Error getting users in channel:', err);
-    throw err;
-  }
-}
+//     return channel.users
+//       .filter(user => user._id.toString() !== excludeUserId)
+//       .map(user => ({
+//         id: user._id,
+//         name: user.name,
+//         socketId: user.socketId,
+//       }));
+//   } catch (err) {
+//     console.error('Error getting users in channel:', err);
+//     throw err;
+//   }
+// }
 
-module.exports = { getUserByName, updateUserName, updateUserSocket, getUsersInSameChannel };
+module.exports = { getUserByName, updateUserName };

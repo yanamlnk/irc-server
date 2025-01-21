@@ -41,7 +41,6 @@ async function joinChannel(userId, channelName) {
         //     channelName = '#' + channelName;
         // }
 
-        console.log(`Searching for channel with name: ${channelName}`);
         const channel = await Channel.findOne({ name: channelName });
 
         if (!channel) {
@@ -53,10 +52,6 @@ async function joinChannel(userId, channelName) {
           { $addToSet: { users: userId } },
           { new: true }
         ).populate('users', 'name');
-  
-        if (!updatedChannel) {
-          throw new Error('Channel not found');
-        }
   
         const channelWithMappedUsers = {
           channel_id: updatedChannel._id,
