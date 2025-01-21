@@ -26,6 +26,7 @@ const MainSection = ({ messages, selectedChannel, currentUser, currentMessage, s
         />
         <button onClick={handleSendMessage}>Envoyer</button>
       </div>
+      Nom utilisateur : {currentUser.name}
     </div>
   );
 };

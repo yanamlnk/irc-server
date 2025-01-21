@@ -9,8 +9,14 @@ export const UserExists = (username) => {
     // });
   };
   
-  export const setNickname = (newName) => {
-    // Exemple d'utilisation de l'événement "setNickname"
+  export const setNickname = (newName, socket, currentUser, setCurrentUser) => {
+    socket.emit("changeName", { currentUserName: currentUser.name, newName }, (response) => {
+      if (response.success) {
+        setCurrentUser({ ...currentUser, name: response.newName });
+      } else {
+        console.error(response.message);
+      }
+    });
   };
   
   export const listChannels = (filter, socket, setMessages, messages, selectedChannel) => {

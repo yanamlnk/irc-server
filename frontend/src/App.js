@@ -21,10 +21,11 @@ const App = () => {
   useEffect(() => {
     if (isUsernameSet) {
       if (UserExists(currentUser)) {
-        // Si l'utilisateur existe déjà, on récupère les informations de l'utilisateur
+        //
       } else {
         // Si l'utilisateur n'existe pas, on crée un nouvel utilisateur et on l'associe par défaut au salon "Général"
       }
+      socket.emit('authenticate', { userId: currentUser.id });
       connectionUser();
     }
   }, [isUsernameSet]);
@@ -67,7 +68,7 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     switch (cmd) {
       case "nick":
-        setNickname(args[0]);
+        setNickname(args[0], socket, currentUser, setCurrentUser);
         break;
       case "list":
         listChannels(args[0], socket, setMessages, messages, selectedChannel);
