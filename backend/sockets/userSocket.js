@@ -2,7 +2,7 @@ const { getUserByName, updateUserName } = require('../services/userService');
 const User = require('../models/User');
 const { getChannelsOfUser } = require('../services/channelService');
 
-function userSocket(socket) {
+function userSocket(socket, io) {
   //choisir un nom d'utilisateur
   socket.on('chooseName', async (name, callback) => {
     try {
