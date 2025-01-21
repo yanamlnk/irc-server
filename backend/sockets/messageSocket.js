@@ -1,10 +1,10 @@
 const messageService = require('../services/messageService');
-const { getUsersInChannel } = require('../services/channelService');
+const { getUsersInChannel, getChannelsOfUser } = require('../services/channelService');
 
 function messageSocket(socket, io) {
   console.log('MessageSocket initialized for socket:', socket.id);
 
-  socket.on('authenticate', data => {
+  socket.on('authenticate', async data => {
     console.log('Raw authentication data received:', data);
     console.log('Type of data:', typeof data);
 
@@ -29,6 +29,10 @@ function messageSocket(socket, io) {
 
       socket.userId = userId;
       console.log('Authentication successful for userId:', socket.userId);
+
+      const channels = await getChannelsOfUser(user._id);
+      channels.forEach(channel => socket.join(channel.channel_id));
+
     } catch (err) {
       console.error('Error parsing authentication data:', err);
     }
