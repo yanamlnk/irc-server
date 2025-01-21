@@ -20,11 +20,6 @@ const App = () => {
 
   useEffect(() => {
     if (isUsernameSet) {
-      if (UserExists(currentUser)) {
-        //
-      } else {
-        // Si l'utilisateur n'existe pas, on crée un nouvel utilisateur et on l'associe par défaut au salon "Général"
-      }
       socket.emit('authenticate', { userId: currentUser.id });
       connectionUser();
     }
@@ -49,7 +44,6 @@ const App = () => {
   }, []);
 
   const connectionUser = () => {
-    listChannelsOfUser(currentUser.id);
     joinChannel(currentUser.id, "General");
   };
 
@@ -106,11 +100,17 @@ const App = () => {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
 
-    setCurrentUser({
-      id: "67851a5c62459a1ecaf85957",
-      name: "Yaya test"
+    socket.emit("chooseName", name, (response) => {
+      if (response.success) {
+        setCurrentUser({
+          id: response.user.id,
+          name: response.user.name,
+        });
+        setIsUsernameSet(true);
+      } else {
+        console.error(response.message);
+      }
     });
-    setIsUsernameSet(true);
   };
 
   const listChannelsOfUser = (userId, filter = "") => {

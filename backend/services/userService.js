@@ -3,11 +3,11 @@ const User = require('../models/User');
 
 async function getUserByName(name) {
   try {
-    let user = await User.findOne({ name: name });
-    if (!user) {
-      user = new User({ name: name });
+    // let user = await User.findOne({ name: name });
+    // if (!user) {
+      let user = new User({ name: name });
       await user.save();
-    }
+    // }
     return user;
   } catch (err) {
     console.error('Error handling user:', err);

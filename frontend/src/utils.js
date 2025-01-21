@@ -1,14 +1,3 @@
-export const UserExists = (username) => {
-    // Exemple d'utilisation de l'événement "UserExists"
-    // socket.emit("UserExists", username, (response) => {
-    //   if (response.success) {
-    //     console.log("UserExists response :", response);
-    //   } else {
-    //     console.error(response.message);
-    //   }
-    // });
-  };
-  
   export const setNickname = (newName, socket, currentUser, setUsers, setCurrentUser) => {
     socket.emit("changeName", { currentUserName: currentUser.name, newName }, (response) => {
       if (response.success) {
