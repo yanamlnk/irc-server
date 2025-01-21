@@ -9,7 +9,7 @@ describe('User Service Test', () => {
     beforeAll(async () => {
         mongoServer = await MongoMemoryServer.create();
         const uri = mongoServer.getUri();
-        await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+        await mongoose.connect(uri);
     });
 
     afterAll(async () => {
@@ -29,11 +29,11 @@ describe('User Service Test', () => {
         expect(result.name).toBe('testUser');
     });
 
-    it('should throw an error if user not found', async () => {
-        const nonExistentUserId = new mongoose.Types.ObjectId();
+    it('should create a new user if not found', async () => {
+        const result = await userService.getUserByName('newUser');
 
-        await expect(userService.getUserByName(nonExistentUserId, 'nonExistentUser'))
-                .rejects.toThrow('User not found');
+        expect(result).toHaveProperty('_id');
+        expect(result.name).toBe('newUser');
     });
 
     it('should update the user name if new name is not taken', async () => {
@@ -60,5 +60,4 @@ describe('User Service Test', () => {
         await expect(userService.updateUserName(nonExistentUserId, 'newName'))
             .rejects.toThrow('User not found');
     });
-
 });
