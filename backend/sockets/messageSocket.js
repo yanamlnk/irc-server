@@ -4,118 +4,74 @@ const { getUsersInChannel, getChannelsOfUser } = require('../services/channelSer
 function messageSocket(socket, io) {
   console.log('MessageSocket initialized for socket:', socket.id);
 
-  socket.on('authenticate', async data => {
-    console.log('Raw authentication data received:', data);
-    console.log('Type of data:', typeof data);
-
+  socket.on('getChannelMessages', async ({ channelId }, callback) => {
     try {
-      //juste pour tester avec postman
-      let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-      console.log('Parsed data:', parsedData);
-
-      let userId;
-      if (Array.isArray(parsedData)) {
-        userId = parsedData[1]?.userId;
-      } else if (typeof parsedData === 'object') {
-        userId = parsedData.data?.userId || parsedData.userId;
-      }
-
-      console.log('Final extracted userId:', userId);
-
-      if (!userId) {
-        console.log('No userId found in data');
-        return;
-      }
-
-      socket.userId = userId;
-      console.log('Authentication successful for userId:', socket.userId);
-
-      const channels = await getChannelsOfUser(user._id);
-      channels.forEach(channel => socket.join(channel.channel_id));
+      const messages = await messageService.getChannelMessages(channelId);
+      callback({ success: true, messages });
 
     } catch (err) {
-      console.error('Error parsing authentication data:', err);
+      console.error('Error fetching channel messages:', err);
+      callback({ success: false, message: err.message });
     }
   });
-
   //envoyer un message au channel
-  socket.on('channelMessage', async data => {
-    console.log('Received channel message:', data);
+  socket.on('channelMessage', async ({ text, channelId }, callback) => {
     try {
-      const { text, channelId } = data;
+      if (!socket.userName) {
+        throw new Error('Choose a name before sending a message');
+      }
 
-      if (!socket.userId) {
-        throw new Error('User not authenticated');
+      const senderInChannel = io.sockets.adapter.rooms.get(channelId)?.has(socket.id);
+      if (!senderInChannel) {
+        throw new Error('Sender must be a member of the channel');
       }
 
       const message = await messageService.saveMessage({
         text,
-        sender: socket.userId,
-        recipient: channelId,
-        recipientType: 'Channel',
-        channelContext: channelId,
-      });
-      const messageData = {
-        ...message,
-        isPrivate: false,
+        sender: socket.userName,
         channelId,
-      };
+      });
 
       io.to(channelId).emit('newMessage', {
-        ...messageData,
+        ...message.toObject(),
         isSent: true,
       });
-
-      socket.emit('channelMessageResponse', { success: true, message: messageData });
+      callback({ success: true, message: message });
     } catch (err) {
-      console.error('Error in channelMessage:', err);
-      socket.emit('channelMessageResponse', { success: false, message: err.message });
+      callback({ success: false, message: err.message });
     }
   });
 
   //envoyer un message privé
-  socket.on('privateMessage', async data => {
-    console.log('Received private message:', data);
+  socket.on('privateMessage', ({ text, to, channelId }, callback) => {
     try {
-      const { text, to, channelId } = data;
-      console.log('Message details:', { text, to, channelId });
-
-      if (!socket.userId) {
-        console.log('User not authenticated');
-        throw new Error('User not authenticated');
+      if (!socket.userName) {
+        throw new Error('You must choose a name');
       }
 
-      const usersInChannel = await getUsersInChannel(channelId);
-      console.log('All users in channel:', usersInChannel);
-      const recipientInChannel = usersInChannel.find(u => u.name === to);
-      console.log('Found recipient:', recipientInChannel);
+      const recipientSocket = [...io.sockets.sockets.values()].find(s => s.userName === to);
 
-      if (!recipientInChannel) {
-        throw new Error('Recipient is not in this channel');
+      if (!recipientSocket) {
+        throw new Error('Recipient is not online');
       }
 
-      console.log('Attempting to save message with:', {
-        sender: socket.userId,
-        recipient: recipientInChannel.user_id,
-        channelId,
-      });
+      //fonctionnalité native de socket.io pour vérifier si les deux utilisateurs sont dans le même canal
+      const channelRoom = io.sockets.adapter.rooms.get(channelId);
+      const senderInChannel = channelRoom?.has(socket.id);
+      const recipientInChannel = channelRoom?.has(recipientSocket.id);
 
-      const message = await messageService.saveMessage({
+      if (!senderInChannel || !recipientInChannel) {
+        throw new Error('Both users must be in the channel to exchange private messages');
+      }
+
+      const message = messageService.createPrivateMessage({
         text,
-        sender: socket.userId,
-        recipient: recipientInChannel.user_id,
-        recipientType: 'User',
-        channelContext: channelId,
+        sender: socket.userName,
+        recipient: to,
       });
-
-      const messageData = {
-        ...message,
-        isPrivate: true,
-        channelId,
-      };
 
       socket.emit('newMessage', {
-        ...messageData,
+        ...message,
         isSent: true,
       });
 
@@ -126,10 +82,10 @@ function messageSocket(socket, io) {
         });
       }
 
-      socket.emit('privateMessageResponse', { success: true, message: messageData });
+      callback({ success: true, message });
     } catch (err) {
       console.error('Error in privateMessage:', err);
-      socket.emit('privateMessageResponse', { success: false, message: err.message });
+      callback({ success: false, message: err.message });
     }
   });
 }

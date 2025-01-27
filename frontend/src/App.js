@@ -12,7 +12,7 @@ const App = () => {
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
-  const [selectedChannel, setSelectedChannel] = useState("General");
+  const [selectedChannel, setSelectedChannel] = useState("#general");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [channels, setChannels] = useState([]);
   const [users, setUsers] = useState([]);
@@ -20,13 +20,8 @@ const App = () => {
 
   useEffect(() => {
     if (isUsernameSet) {
-      if (UserExists(currentUser)) {
-        //
-      } else {
-        // Si l'utilisateur n'existe pas, on crée un nouvel utilisateur et on l'associe par défaut au salon "Général"
-      }
       socket.emit('authenticate', { userId: currentUser.id });
-      connectionUser();
+      // connectionUser();
     }
   }, [isUsernameSet]);
 
@@ -38,9 +33,7 @@ const App = () => {
 
   useEffect(() => {
     socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-      if(userName != currentUser.name){
-        alert(`${userName} a rejoint le channel !`);
-      }
+        alert(`${userName} a rejoint le channel numéro : ${channelId}`);
     });
 
     return () => {
@@ -49,7 +42,6 @@ const App = () => {
   }, []);
 
   const connectionUser = () => {
-    listChannelsOfUser(currentUser.id);
     joinChannel(currentUser.id, "General");
   };
 
@@ -68,7 +60,8 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     switch (cmd) {
       case "nick":
-        setNickname(args[0], socket, currentUser, setCurrentUser);
+        setNickname(args[0], socket, currentUser, setUsers, setCurrentUser);
+        listChannelsOfUser(currentUser.id);
         break;
       case "list":
         listChannels(args[0], socket, setMessages, messages, selectedChannel);
@@ -105,11 +98,18 @@ const App = () => {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
 
-    setCurrentUser({
-      id: "67851a5c62459a1ecaf85957",
-      name: "Yaya test"
+    socket.emit("chooseName", name, (response) => {
+      if (response.success) {
+        console.log("User set:", response.user);
+        setCurrentUser({
+          id: response.user.id,
+          name: response.user.name,
+        });
+        setIsUsernameSet(true);
+      } else {
+        console.error(response.message);
+      }
     });
-    setIsUsernameSet(true);
   };
 
   const listChannelsOfUser = (userId, filter = "") => {

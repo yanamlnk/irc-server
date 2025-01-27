@@ -7,9 +7,23 @@ const {
   renameChannel,
   deleteChannel,
   getChannels,
+  getChannelId,
 } = require('../services/channelService');
 
 function channelSocket(socket, io) {
+
+  //get channel id by name. returns channel id
+  socket.on('getChannelId', async (channelName, callback) => {
+    try {
+      const channelId = await getChannelId(channelName);
+  
+      callback({ success: true, channelId });
+    } catch (err) {
+      console.error(err);
+      callback({ success: false, message: err.message });
+    }
+  });
+
   //list all channels where user is present. needs userID. returns list of channelIDs ('channel_id') and names of channels ('name')
   socket.on('listChannelsOfUser', async (userID, callback) => {
     try {
@@ -34,22 +48,27 @@ function channelSocket(socket, io) {
 
   // Add user to the channel. returns the updated channel with new list of users.
   socket.on('joinChannel', async ({ userId, channelName }, callback) => {
-    try {
-      const updatedChannel = await joinChannel(userId, channelName);
-      const channelId = updatedChannel.channel_id;
-      let userName = '';
+      try {
+        const updatedChannel = await joinChannel(userId, channelName);
+        const channelId = updatedChannel.channel_id.toString();
+        const userNickname = await ChannelUser.findOne({
+          channel: updatedChannel.channel_id,
+          user: userId,
+        }).select('nickname');
 
-      for (const user of updatedChannel.users) {
-        if (user.user_id.toString() === userId) {
-          userName = user.name;
-        }
-      }
+      if (!userNickname) {
+        throw new Error('Could not find user nickname');
+      } 
 
       socket.join(channelId);
+
+      const members = io.sockets.adapter.rooms.get(channelId);
+      console.log(`Members in room ${channelId}:`, members);
+      
       io.to(channelId).emit('userJoinedChannel', {
-        userId,
-        channelId,
-        userName: userName,
+        userId: userId,
+        channelId: channelId,
+        userName: userNickname.nickname,
       });
 
       callback({ success: true, channel: updatedChannel });
@@ -59,11 +78,51 @@ function channelSocket(socket, io) {
     }
   });
 
+  // Événement channelJoinTest
+  socket.on('channelJoinTest', ({ userId, channelName }, callback) => {
+    try {
+      console.log(
+        `Socket ${socket.id} wants to TEST-join channel "${channelName}" with userId ${userId}`
+      );
+
+      // Pour ce test : on simule un "channelId" = channelName + "_1234"
+      // ou on fait juste channelId = channelName (si tu veux)
+      const channelId = `${channelName}_testFakeID`;
+
+      // 1) On join la room (channelId)
+      socket.join(channelId);
+
+      // 2) On loggue qui est dans cette room
+      const members = io.sockets.adapter.rooms.get(channelId);
+      console.log(`Members in TEST room "${channelId}":`, members);
+
+      // 3) On broadcast à tous les autres (ou à tous) un événement
+      socket.to(channelId).emit('userJoinedTestChannel', {
+        userId,
+        channelId,
+        userName: `FakeName_${userId}` // on simule un pseudo
+      });
+
+      // 4) On renvoie un callback au client
+      callback({
+        success: true,
+        message: 'Joined test room successfully',
+        channelId
+      });
+    } catch (err) {
+      console.error(err);
+      callback({
+        success: false,
+        message: err.message
+      });
+    }
+  });
+
   //create channel with the given name. Returns the new channel. Automatically add a user who created a channel to the channel
   socket.on('createChannel', async ({ userId, name }, callback) => {
     try {
       const newChannel = await createChannel(userId, name);
-      socket.join(newChannel.channel_id);
+      socket.join(newChannel.channel_id.toString());
       callback({ success: true, channel: newChannel });
     } catch (err) {
       console.error(err);
@@ -75,20 +134,12 @@ function channelSocket(socket, io) {
   socket.on('quitChannel', async ({ userId, channelId }, callback) => {
     try {
       const updatedChannel = await quitChannel(userId, channelId);
-      socket.leave(channelId);
-
-      let userName = '';
-
-      for (const user of updatedChannel.users) {
-        if (user.user_id.toString() === userId) {
-          userName = user.name;
-        }
-      }
+      socket.leave(channelId.toString());
 
       io.to(channelId).emit('userLeftChannel', {
         userId,
         channelId,
-        userName: userName,
+        userName: updatedChannel.deletedUserNickname,
       });
 
       callback({ success: true, channel: updatedChannel });
@@ -118,7 +169,7 @@ function channelSocket(socket, io) {
       const result = await deleteChannel(channelId);
 
       io.to(channelId).emit('channelDeleted', { channelId: result.channel_id });
-      io.in(channelId).socketsLeave(channelId);
+      io.in(channelId).socketsLeave(channelId.toString());
 
       callback({ success: true, channel: result });
     } catch (err) {
