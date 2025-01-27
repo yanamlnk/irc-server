@@ -12,7 +12,7 @@ const App = () => {
   const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [view, setView] = useState("channels");
-  const [selectedChannel, setSelectedChannel] = useState("General");
+  const [selectedChannel, setSelectedChannel] = useState("#general");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [channels, setChannels] = useState([]);
   const [users, setUsers] = useState([]);
@@ -21,7 +21,7 @@ const App = () => {
   useEffect(() => {
     if (isUsernameSet) {
       socket.emit('authenticate', { userId: currentUser.id });
-      connectionUser();
+      // connectionUser();
     }
   }, [isUsernameSet]);
 
@@ -100,6 +100,7 @@ const App = () => {
 
     socket.emit("chooseName", name, (response) => {
       if (response.success) {
+        console.log("User set:", response.user);
         setCurrentUser({
           id: response.user.id,
           name: response.user.name,

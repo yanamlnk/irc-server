@@ -13,7 +13,7 @@ function userSocket(socket, io) {
       socket.userId = user._id;
       socket.userName = user.name;
 
-      activeUsers.set(name, socket.id);
+      // activeUsers.set(name, socket.id);
 
       const channels = await getChannelsOfUser(user._id);
       channels.forEach(channel => socket.join(channel.channel_id.toString()));

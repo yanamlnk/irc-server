@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (socket.userName) {
-      activeUsers.delete(socket.userName);
+      // activeUsers.delete(socket.userName);
 
       console.log('A user disconnected:', socket.id);
     }
