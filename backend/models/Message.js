@@ -2,22 +2,17 @@ const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
   text: { type: String, required: true },
-  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  recipient: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    refPath: 'recipientType',
-  },
+  sender: { type: String, required: true },
   recipientType: {
     type: String,
     required: true,
-    enum: ['User', 'Channel'],
+    enum: ['Channel', 'User'],
   },
-  channelContext: {
+  channelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Channel',
     required: function () {
-      return this.recipientType === 'User';
+      return this.recipientType === 'Channel';
     },
   },
   timestamp: { type: Date, default: Date.now },
