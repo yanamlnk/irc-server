@@ -14,7 +14,10 @@ function userSocket(socket, io) {
 
       socket.join(channelId.toString());
 
-      io.to(channelId).emit('userJoinedChannel', {
+      const members = io.sockets.adapter.rooms.get(channelId.toString());
+      console.log(`Members in TEST room "${channelId}":`, members);
+
+      io.to(channelId.toString()).emit('userJoinedChannel', {
         userId: user._id,
         channelId: channelId,
         userName: user.name,
