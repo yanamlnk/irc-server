@@ -17,9 +17,9 @@ async function getChannelId(channelName) {
 
 // return all users' names in a channel
 async function getUsersInChannel(channelId) {
-    if (!mongoose.Types.ObjectId.isValid(channelId)) {
-      throw new Error('Invalid channel ID');
-    }
+    // if (!mongoose.Types.ObjectId.isValid(channelId)) {
+    //   throw new Error('Invalid channel ID');
+    // }
 
     const channel = await Channel.findById(channelId).populate('channelUsers');
 
@@ -31,9 +31,9 @@ async function getUsersInChannel(channelId) {
 
 // retuns all channels where ther user is present
 async function getChannelsOfUser(userID) {
-    if (!mongoose.Types.ObjectId.isValid(userID)) {
-        throw new Error('Invalid user ID');
-    }
+    // if (!mongoose.Types.ObjectId.isValid(userID)) {
+    //     throw new Error('Invalid user ID');
+    // }
 
     const channels = await Channel.find({ users: userID}).select('_id name');
     // if (channels.length === 0) {

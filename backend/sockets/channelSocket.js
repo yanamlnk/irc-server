@@ -9,6 +9,7 @@ const {
   getChannels,
   getChannelId,
 } = require('../services/channelService');
+const ChannelUser = require('../models/ChannelUser');
 
 function channelSocket(socket, io) {
 

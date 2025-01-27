@@ -22,12 +22,15 @@ const App = () => {
     if (isUsernameSet) {
       socket.emit('authenticate', { userId: currentUser.id });
       // connectionUser();
+      listChannelsOfUser(currentUser.id);
     }
   }, [isUsernameSet]);
 
   useEffect(() => {
     if (channels.length > 0) {
       listUsersInChannel();
+      // on cherche le nom actuel du l'utilisateur dans le channel sélectionné
+      // getNickname(currentUser.id, channels.find((channel) => channel.name === selectedChannel).channel_id, setNickname);
     }
   }, [selectedChannel, channels]);
 
@@ -42,7 +45,7 @@ const App = () => {
   }, []);
 
   const connectionUser = () => {
-    joinChannel(currentUser.id, "General");
+    joinChannel(currentUser.id, "#general");
   };
 
   const handleSendMessage = () => {
@@ -60,7 +63,8 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     switch (cmd) {
       case "nick":
-        setNickname(args[0], socket, currentUser, setUsers, setCurrentUser);
+        const currentChannelId = channels.find((channel) => channel.name === selectedChannel).channel_id;
+        setNickname(args[0], socket, currentUser, currentChannelId, setUsers, setCurrentUser);
         listChannelsOfUser(currentUser.id);
         break;
       case "list":
@@ -129,7 +133,7 @@ const App = () => {
         if(requestCommand) {
           setMessages([
             ...messages,
-            { user: "Bot", text: `Liste des utilisateurs du salon: ${response.users.map((user) => user.name).join(", ")}`, channel: selectedChannel },
+            { user: "Bot", text: `Liste des utilisateurs du salon: ${response.users.map((user) => user.nickname).join(", ")}`, channel: selectedChannel },
           ]);
         }
         setUsers(response.users);
