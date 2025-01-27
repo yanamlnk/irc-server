@@ -36,7 +36,7 @@ function channelSocket(socket, io) {
   socket.on('joinChannel', async ({ userId, channelName }, callback) => {
     try {
       const updatedChannel = await joinChannel(userId, channelName);
-      const channelId = updatedChannel.channel_id;
+      const channelId = updatedChannel.channel_id.toString();
       let userName = '';
 
       for (const user of updatedChannel.users) {
@@ -46,9 +46,13 @@ function channelSocket(socket, io) {
       }
 
       socket.join(channelId);
+
+      const members = io.sockets.adapter.rooms.get(channelId);
+      console.log(`Members in room ${channelId}:`, members);
+      
       io.to(channelId).emit('userJoinedChannel', {
         userId,
-        channelId,
+        channelId: channelId,
         userName: userName,
       });
 
@@ -56,6 +60,46 @@ function channelSocket(socket, io) {
     } catch (err) {
       console.error(err);
       callback({ success: false, message: err.message });
+    }
+  });
+
+  // Événement channelJoinTest
+  socket.on('channelJoinTest', ({ userId, channelName }, callback) => {
+    try {
+      console.log(
+        `Socket ${socket.id} wants to TEST-join channel "${channelName}" with userId ${userId}`
+      );
+
+      // Pour ce test : on simule un "channelId" = channelName + "_1234"
+      // ou on fait juste channelId = channelName (si tu veux)
+      const channelId = `${channelName}_testFakeID`;
+
+      // 1) On join la room (channelId)
+      socket.join(channelId);
+
+      // 2) On loggue qui est dans cette room
+      const members = io.sockets.adapter.rooms.get(channelId);
+      console.log(`Members in TEST room "${channelId}":`, members);
+
+      // 3) On broadcast à tous les autres (ou à tous) un événement
+      socket.to(channelId).emit('userJoinedTestChannel', {
+        userId,
+        channelId,
+        userName: `FakeName_${userId}` // on simule un pseudo
+      });
+
+      // 4) On renvoie un callback au client
+      callback({
+        success: true,
+        message: 'Joined test room successfully',
+        channelId
+      });
+    } catch (err) {
+      console.error(err);
+      callback({
+        success: false,
+        message: err.message
+      });
     }
   });
 

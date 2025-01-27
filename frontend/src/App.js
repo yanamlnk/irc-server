@@ -33,9 +33,7 @@ const App = () => {
 
   useEffect(() => {
     socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-      if(userName != currentUser.name){
-        alert(`${userName} a rejoint le channel !`);
-      }
+        alert(`${userName} a rejoint le channel numéro : ${channelId}`);
     });
 
     return () => {
