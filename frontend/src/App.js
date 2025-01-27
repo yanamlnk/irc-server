@@ -36,11 +36,34 @@ const App = () => {
 
   useEffect(() => {
     socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-        alert(`${userName} a rejoint le channel numéro : ${channelId}`);
+        setMessages([
+          ...messages,
+          { user: "Bot", text: `${userName} a rejoint le salon`, channel: selectedChannel },
+        ]);
+        listUsersInChannel();
+    });
+
+    socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
+        setMessages([
+          ...messages,
+          { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
+        ]);
+        listUsersInChannel();
+    });
+
+    socket.on('channelRenamed', ({ channel }) => {
+      console.log(channel);
+      setMessages([
+        ...messages,
+        { user: "Bot", text: `Le salon ${channel.oldName} a été renommé en ${channel.name}`, channel: selectedChannel },
+      ]);
+      listChannelsOfUser(currentUser.id);
     });
 
     return () => {
       socket.off('userJoinedChannel');
+      socket.off('userLeftChannel');
+      socket.off('channelRenamed');
     };
   }, []);
 
