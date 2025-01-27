@@ -1,13 +1,16 @@
 // userService.js
 const User = require('../models/User');
+const { joinChannel } = require('./channelService');
+const ChannelUser = require('../models/ChannelUser');
 
-async function getUserByName(name) {
+async function createUser(name) {
   try {
-    // let user = await User.findOne({ name: name });
-    // if (!user) {
-      let user = new User({ name: name });
-      await user.save();
-    // }
+    const user = new User({ name: name });
+    await user.save();
+
+    const generalChannel = '#general';
+    await joinChannel(user._id, generalChannel);
+
     return user;
   } catch (err) {
     console.error('Error handling user:', err);
@@ -15,26 +18,40 @@ async function getUserByName(name) {
   }
 }
 
-async function updateUserName(userId, newName) {
+async function updateUserName(userId, newName, channelId) {
   try {
-    const existingUser = await User.findOne({ name: newName });
-    if (existingUser) {
-      throw new Error('Username already taken');
+    const existingChannelUser = await ChannelUser.findOne({
+      channel: channelId,
+      user: userId,
+    });
+
+    if (!existingChannelUser) {
+      throw new Error('User not found in channel');
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        name: newName,
-        // updatedAt: new Date()
-      },
-      { new: true },
-    );
-
-    if (!user) {
-      throw new Error('User not found');
+    if (existingChannelUser.nickname === newName) {
+      return existingChannelUser;
     }
 
+    let isNicknameTaken = true;
+    let nickname = newName;
+
+    while (isNicknameTaken) {
+      const existingUser = await ChannelUser.findOne({
+        channel: channelId,
+        nickname: newName,
+      });
+
+      if (existingUser) {
+        nickname = `${newName}${Math.floor(1000 + Math.random() * 9000)}`;
+      } else {
+        isNicknameTaken = false;
+      }
+    }
+
+    existingChannelUser.nickname = nickname;
+    await existingChannelUser.save();
+    
     return user;
   } catch (err) {
     console.error('Error updating user name:', err);
@@ -51,21 +68,21 @@ async function updateUserName(userId, newName) {
 //   }
 // }
 
-async function getUsersInSameChannel(channelId, excludeUserId) {
-  try {
-    const channel = await channel.findById(channelId).populate('users', 'name socketId');
+// async function getUsersInSameChannel(channelId, excludeUserId) {
+//   try {
+//     const channel = await channel.findById(channelId).populate('users', 'name socketId');
 
-    return channel.users
-      .filter(user => user._id.toString() !== excludeUserId)
-      .map(user => ({
-        id: user._id,
-        name: user.name,
-        socketId: user.socketId,
-      }));
-  } catch (err) {
-    console.error('Error getting users in channel:', err);
-    throw err;
-  }
-}
+//     return channel.users
+//       .filter(user => user._id.toString() !== excludeUserId)
+//       .map(user => ({
+//         id: user._id,
+//         name: user.name,
+//         socketId: user.socketId,
+//       }));
+//   } catch (err) {
+//     console.error('Error getting users in channel:', err);
+//     throw err;
+//   }
+// }
 
-module.exports = { getUserByName, updateUserName, getUsersInSameChannel };
+module.exports = { createUser, updateUserName };

@@ -52,7 +52,11 @@ io.on('connection', (socket) => {
   messageSocket(socket, io);
 
   socket.on('disconnect', () => {
-    console.log('A user disconnected:', socket.id);
+    if (socket.userName) {
+      activeUsers.delete(socket.userName);
+
+      console.log('A user disconnected:', socket.id);
+    }
   });
 });
 
