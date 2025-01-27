@@ -1,43 +1,14 @@
 const messageService = require('../services/messageService');
-const { getUsersInChannel } = require('../services/channelService');
+const { getUsersInChannel, getChannelsOfUser } = require('../services/channelService');
 
 function messageSocket(socket, io) {
   console.log('MessageSocket initialized for socket:', socket.id);
-
-  // socket.on('authenticate', data => {
-  //   console.log('Raw authentication data received:', data);
-  //   console.log('Type of data:', typeof data);
-
-  //   try {
-  //     //juste pour tester avec postman
-  //     let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-  //     console.log('Parsed data:', parsedData);
-
-  //     let userId;
-  //     if (Array.isArray(parsedData)) {
-  //       userId = parsedData[1]?.userId;
-  //     } else if (typeof parsedData === 'object') {
-  //       userId = parsedData.data?.userId || parsedData.userId;
-  //     }
-
-  //     console.log('Final extracted userId:', userId);
-
-  //     if (!userId) {
-  //       console.log('No userId found in data');
-  //       return;
-  //     }
-
-  //     socket.userId = userId;
-  //     console.log('Authentication successful for userId:', socket.userId);
-  //   } catch (err) {
-  //     console.error('Error parsing authentication data:', err);
-  //   }
-  // });
 
   socket.on('getChannelMessages', async ({ channelId }, callback) => {
     try {
       const messages = await messageService.getChannelMessages(channelId);
       callback({ success: true, messages });
+
     } catch (err) {
       console.error('Error fetching channel messages:', err);
       callback({ success: false, message: err.message });

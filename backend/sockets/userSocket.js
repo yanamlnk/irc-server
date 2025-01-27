@@ -8,7 +8,7 @@ function userSocket(socket, io) {
     try {
       const user = await getUserByName(name);
 
-      await updateUserSocket(user._id, socket.id);
+      // await updateUserSocket(user._id, socket.id);
 
       socket.userId = user._id;
       socket.userName = user.name;
