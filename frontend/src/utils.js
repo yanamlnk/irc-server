@@ -11,8 +11,8 @@
   export const listChannels = (filter, socket, setMessages, messages, selectedChannel) => {
     socket.emit("listChannels", filter, (response) => {
       if (response.success) {
-        setMessages([ 
-          ...messages,
+        setMessages(prevMessages => [
+          ...prevMessages,
           { user: "Bot", text: `Liste des salons: ${response.channels.map((channel) => channel.name).join(", ")}`, channel: selectedChannel },
         ]);
       } else {

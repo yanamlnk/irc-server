@@ -12,7 +12,10 @@ async function getChannelId(channelName) {
     throw new Error('Channel not found');
   }
 
-  return channel._id;
+  return {
+    channel_id: channel._id,
+    name: channel.name
+  }
 }
 
 // return all users' names in a channel
@@ -203,7 +206,6 @@ async function renameChannel(channelId, newName) {
         if(oldName == "#general") {
           throw new Error('Cannot rename general channel');
         }
-
         const updatedChannel = await Channel.findByIdAndUpdate(
           channelId,
           { name: newName },
@@ -219,6 +221,7 @@ async function renameChannel(channelId, newName) {
         return {
           channel_id: updatedChannel._id,
           name: updatedChannel.name,
+          old_name: oldName,
           users: channelUsers.map(channelUser => ({
             user_id: channelUsers.user,
             name: channelUsers.nickname,

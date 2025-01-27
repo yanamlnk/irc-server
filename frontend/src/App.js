@@ -30,19 +30,52 @@ const App = () => {
     if (channels.length > 0) {
       listUsersInChannel();
       // on cherche le nom actuel du l'utilisateur dans le channel sélectionné
-      // getNickname(currentUser.id, channels.find((channel) => channel.name === selectedChannel).channel_id, setNickname);
+      const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
+      if (currentChannelId) {
+        socket.emit('getNickname', { userId: currentUser.id, channelId: currentChannelId }, (response) => {
+          if (response.success) {
+            setCurrentUser({ ...currentUser, name: response.nickname });
+          } else {
+            console.error(response.message);
+          }
+        }); 
+      }
     }
   }, [selectedChannel, channels]);
 
   useEffect(() => {
-    socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-        alert(`${userName} a rejoint le channel numéro : ${channelId}`);
+    socket.on('userJoinedChannel', ({ userId, channelId, channelName, userName }) => {
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { user: "Bot", text: `${userName} a rejoint le salon`, channel: channelName },
+      ]);
+      console.log("User joined:", userName);
+      listUsersInChannel();
+    });
+
+    socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
+        setMessages(prevMessages => [
+          ...prevMessages,
+          { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
+        ]);
+        listUsersInChannel();
+    });
+
+    socket.on('channelRenamed', ({ channel }) => {
+      // Mettre à jour les canaux existants
+      setChannels((prevChannels) =>
+        prevChannels.map((ch) =>
+          ch.channel_id === channel.channel_id ? { ...ch, name: channel.name } : ch
+        )
+      );
     });
 
     return () => {
       socket.off('userJoinedChannel');
+      socket.off('userLeftChannel');
+      socket.off('channelRenamed');
     };
-  }, []);
+  }, [selectedChannel, channels]);
 
   const connectionUser = () => {
     joinChannel(currentUser.id, "#general");
@@ -63,7 +96,7 @@ const App = () => {
     const [cmd, ...args] = command.slice(1).split(" ");
     switch (cmd) {
       case "nick":
-        const currentChannelId = channels.find((channel) => channel.name === selectedChannel).channel_id;
+        const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
         setNickname(args[0], socket, currentUser, currentChannelId, setUsers, setCurrentUser);
         listChannelsOfUser(currentUser.id);
         break;
@@ -94,7 +127,10 @@ const App = () => {
   };
 
   const sendMessage = (message) => {
-    setMessages([...messages, { user: currentUser.name, text: currentMessage, channel: selectedChannel }]);
+    setMessages(prevMessages => [
+      ...prevMessages,
+      { user: currentUser.name, text: message, channel: selectedChannel },
+    ]);
   };
 
   const handleSetUsername = (name) => {
@@ -131,8 +167,8 @@ const App = () => {
     socket.emit("listUsersInChannel", channelId, (response) => {
       if (response.success) {
         if(requestCommand) {
-          setMessages([
-            ...messages,
+          setMessages(prevMessages => [
+            ...prevMessages,
             { user: "Bot", text: `Liste des utilisateurs du salon: ${response.users.map((user) => user.nickname).join(", ")}`, channel: selectedChannel },
           ]);
         }

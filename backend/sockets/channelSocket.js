@@ -18,7 +18,7 @@ function channelSocket(socket, io) {
     try {
       const channelId = await getChannelId(channelName);
   
-      callback({ success: true, channelId });
+      callback({ success: true, channelId: channelId.channel_id });
     } catch (err) {
       console.error(err);
       callback({ success: false, message: err.message });
@@ -69,6 +69,7 @@ function channelSocket(socket, io) {
       io.to(channelId).emit('userJoinedChannel', {
         userId: userId,
         channelId: channelId,
+        channelName: updatedChannel.name,
         userName: userNickname.nickname,
       });
 
