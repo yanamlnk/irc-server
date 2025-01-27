@@ -52,7 +52,7 @@ async function updateUserName(userId, newName, channelId) {
     existingChannelUser.nickname = nickname;
     await existingChannelUser.save();
     
-    return user;
+    return existingChannelUser;
   } catch (err) {
     console.error('Error updating user name:', err);
     throw err;

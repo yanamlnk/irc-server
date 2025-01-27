@@ -1,5 +1,5 @@
-  export const setNickname = (newName, socket, currentUser, setUsers, setCurrentUser) => {
-    socket.emit("changeName", { currentUserName: currentUser.name, newName }, (response) => {
+  export const setNickname = (newName, socket, currentUser, currentChannelId, setUsers, setCurrentUser) => {
+    socket.emit("changeName", { userId: currentUser.id, newName, channelId: currentChannelId }, (response) => {
       if (response.success) {
         setCurrentUser({ ...currentUser, name: response.newName });
       } else {
@@ -11,7 +11,7 @@
   export const listChannels = (filter, socket, setMessages, messages, selectedChannel) => {
     socket.emit("listChannels", filter, (response) => {
       if (response.success) {
-        setMessages([
+        setMessages([ 
           ...messages,
           { user: "Bot", text: `Liste des salons: ${response.channels.map((channel) => channel.name).join(", ")}`, channel: selectedChannel },
         ]);

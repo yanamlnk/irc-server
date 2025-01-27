@@ -18,6 +18,16 @@ function userSocket(socket, io) {
       const channels = await getChannelsOfUser(user._id);
       channels.forEach(channel => socket.join(channel.channel_id.toString()));
 
+      // const channelId = channels.find(channel => channel.name === '#general').channel_id.toString();
+      // const members = io.sockets.adapter.rooms.get(channelId);
+      // console.log(`Members in room ${channelId}:`, members);
+
+      io.to(channelId).emit('userJoinedChannel', {
+        userId: userId,
+        channelId: channelId,
+        userName: userNickname.nickname,
+      });
+
       callback({ success: true, user: { id: user._id, name: user.name } });
     } catch (err) {
       callback({ success: false, message: err.message });
@@ -28,7 +38,7 @@ function userSocket(socket, io) {
     try {
       const updatedUser = await updateUserName(userId, newName, channelId);
 
-      io.to(channelId.toSting()).emit('userChangedName', {
+      io.to(channelId.toString()).emit('userChangedName', {
         userId: userId,
         channelId: channelId,
         newName: updatedUser.nickname,
