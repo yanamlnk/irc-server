@@ -44,24 +44,24 @@ const App = () => {
   }, [selectedChannel, channels]);
 
   useEffect(() => {
-    socket.on('userJoinedChannel', ({ userId, channelId, userName }) => {
-        setMessages([
-          ...messages,
-          { user: "Bot", text: `${userName} a rejoint le salon`, channel: selectedChannel },
-        ]);
-        listUsersInChannel();
+    socket.on('userJoinedChannel', ({ userId, channelId, channelName, userName }) => {
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { user: "Bot", text: `${userName} a rejoint le salon`, channel: channelName },
+      ]);
+      console.log("User joined:", userName);
+      listUsersInChannel();
     });
 
     socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
-        setMessages([
-          ...messages,
+        setMessages(prevMessages => [
+          ...prevMessages,
           { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
         ]);
         listUsersInChannel();
     });
 
     socket.on('channelRenamed', ({ channel }) => {
-      console.log('Start channelRenamed', channel);
       // Mettre à jour les canaux existants
       setChannels((prevChannels) =>
         prevChannels.map((ch) =>
@@ -75,7 +75,7 @@ const App = () => {
       socket.off('userLeftChannel');
       socket.off('channelRenamed');
     };
-  }, []);
+  }, [selectedChannel, channels]);
 
   const connectionUser = () => {
     joinChannel(currentUser.id, "#general");
@@ -127,7 +127,10 @@ const App = () => {
   };
 
   const sendMessage = (message) => {
-    setMessages([...messages, { user: currentUser.name, text: currentMessage, channel: selectedChannel }]);
+    setMessages(prevMessages => [
+      ...prevMessages,
+      { user: currentUser.name, text: message, channel: selectedChannel },
+    ]);
   };
 
   const handleSetUsername = (name) => {
@@ -164,8 +167,8 @@ const App = () => {
     socket.emit("listUsersInChannel", channelId, (response) => {
       if (response.success) {
         if(requestCommand) {
-          setMessages([
-            ...messages,
+          setMessages(prevMessages => [
+            ...prevMessages,
             { user: "Bot", text: `Liste des utilisateurs du salon: ${response.users.map((user) => user.nickname).join(", ")}`, channel: selectedChannel },
           ]);
         }

@@ -12,7 +12,10 @@ async function getChannelId(channelName) {
     throw new Error('Channel not found');
   }
 
-  return channel._id;
+  return {
+    channel_id: channel._id,
+    name: channel.name
+  }
 }
 
 // return all users' names in a channel
