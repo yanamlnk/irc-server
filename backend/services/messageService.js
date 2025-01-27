@@ -55,7 +55,7 @@ class MessageService {
   }
 
   // sauve une msg privé dans le contexte d'une chaine
-  async saveChannelMessage({ text, sender, channelId }) {
+  async saveMessage({ text, sender, channelId }) {
     try {
       this.validateMessage(text, sender, 'Channel', channelId);
 
@@ -73,15 +73,16 @@ class MessageService {
     }
   }
 
-  createPrivateMessage({ text, sender, recipientName }) {
+  createPrivateMessage({ text, sender, recipientName, channelId }) {
     try {
-      this.validateMessage(text, sender, 'Private');
+      this.validateMessage(text, sender, 'Private', channelId);
 
       return {
         text: text.trim(),
         sender,
         recipientType: 'Private',
         recipientName,
+        channelId,
         timestamp: new Date(),
       };
     } catch (err) {

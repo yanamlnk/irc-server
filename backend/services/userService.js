@@ -51,7 +51,7 @@ async function updateUserName(userId, newName, channelId) {
 
     existingChannelUser.nickname = nickname;
     await existingChannelUser.save();
-    
+
     return user;
   } catch (err) {
     console.error('Error updating user name:', err);
@@ -59,6 +59,7 @@ async function updateUserName(userId, newName, channelId) {
   }
 }
 
+module.exports = { createUser, updateUserName };
 // async function updateUserSocket(userId, socketId) {
 //   try {
 //     return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
@@ -84,5 +85,3 @@ async function updateUserName(userId, newName, channelId) {
 //     throw err;
 //   }
 // }
-
-module.exports = { createUser, updateUserName };

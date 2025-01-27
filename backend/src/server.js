@@ -30,11 +30,7 @@ io.on('connection', socket => {
   messageSocket(socket, io);
 
   socket.on('disconnect', () => {
-    if (socket.userName) {
-      activeUsers.delete(socket.userName);
-
-      console.log('A user disconnected:', socket.id);
-    }
+    console.log('A user disconnected:', socket.id);
   });
 });
 

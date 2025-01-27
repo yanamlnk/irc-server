@@ -13,8 +13,6 @@ function userSocket(socket, io) {
       socket.userId = user._id;
       socket.userName = user.name;
 
-      activeUsers.set(name, socket.id);
-
       const channels = await getChannelsOfUser(user._id);
       channels.forEach(channel => socket.join(channel.channel_id.toString()));
 
@@ -33,7 +31,7 @@ function userSocket(socket, io) {
         channelId: channelId,
         newName: updatedUser.nickname,
       });
-      
+
       callback({ success: true, newName });
     } catch (err) {
       callback({ success: false, message: err.message });

@@ -1,5 +1,4 @@
 const messageService = require('../services/messageService');
-const { getUsersInChannel, getChannelsOfUser } = require('../services/channelService');
 
 function messageSocket(socket, io) {
   console.log('MessageSocket initialized for socket:', socket.id);
@@ -8,7 +7,6 @@ function messageSocket(socket, io) {
     try {
       const messages = await messageService.getChannelMessages(channelId);
       callback({ success: true, messages });
-
     } catch (err) {
       console.error('Error fetching channel messages:', err);
       callback({ success: false, message: err.message });
@@ -68,6 +66,7 @@ function messageSocket(socket, io) {
         text,
         sender: socket.userName,
         recipient: to,
+        channelId: channelId,
       });
 
       socket.emit('newMessage', {
@@ -77,7 +76,7 @@ function messageSocket(socket, io) {
 
       if (recipientInChannel) {
         io.to(recipientInChannel.socketId).emit('newMessage', {
-          ...messageData,
+          ...message,
           isSent: false,
         });
       }
