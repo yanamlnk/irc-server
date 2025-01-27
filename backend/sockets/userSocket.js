@@ -1,6 +1,5 @@
-const { createUser, updateUserName } = require('../services/userService');
-const User = require('../models/User');
-const { getChannelsOfUser } = require('../services/channelService');
+const { createUser, updateUserName, getNickname } = require('../services/userService');
+const { getChannelId } = require('../services/channelService');
 
 function userSocket(socket, io) {
   //choisir un nom d'utilisateur
@@ -8,24 +7,17 @@ function userSocket(socket, io) {
     try {
       const user = await createUser(name);
 
-      // await updateUserSocket(user._id, socket.id);
-
       socket.userId = user._id;
       socket.userName = user.name;
 
-      // activeUsers.set(name, socket.id);
+      const channelId = await getChannelId('#general');
 
-      const channels = await getChannelsOfUser(user._id);
-      channels.forEach(channel => socket.join(channel.channel_id.toString()));
-
-      // const channelId = channels.find(channel => channel.name === '#general').channel_id.toString();
-      // const members = io.sockets.adapter.rooms.get(channelId);
-      // console.log(`Members in room ${channelId}:`, members);
+      socket.join(channelId.toString());
 
       io.to(channelId).emit('userJoinedChannel', {
-        userId: userId,
+        userId: user._id,
         channelId: channelId,
-        userName: userNickname.nickname,
+        userName: user.name,
       });
 
       callback({ success: true, user: { id: user._id, name: user.name } });
@@ -45,6 +37,16 @@ function userSocket(socket, io) {
       });
       
       callback({ success: true, newName });
+    } catch (err) {
+      callback({ success: false, message: err.message });
+    }
+  });
+
+  socket.on('getNickname', async ({ userId, channelId }, callback) => {
+    try {
+      const nickname = await getNickname(userId, channelId);
+
+      callback({ success: true, nickname });
     } catch (err) {
       callback({ success: false, message: err.message });
     }

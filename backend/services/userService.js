@@ -59,6 +59,24 @@ async function updateUserName(userId, newName, channelId) {
   }
 }
 
+const getNickname = async (userId, channelId) => {
+  try {
+    const channelUser = await ChannelUser.findOne({
+      user: userId,
+      channel: channelId,
+    });
+
+    if (!channelUser) {
+      throw new Error('ChannelUser not found');
+    }
+
+    return channelUser.nickname;
+  } catch (error) {
+    console.error('Error retrieving nickname:', error);
+    throw error;
+  }
+};
+
 // async function updateUserSocket(userId, socketId) {
 //   try {
 //     return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
@@ -85,4 +103,4 @@ async function updateUserName(userId, newName, channelId) {
 //   }
 // }
 
-module.exports = { createUser, updateUserName };
+module.exports = { createUser, updateUserName, getNickname };
