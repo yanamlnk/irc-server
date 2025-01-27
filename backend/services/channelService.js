@@ -154,6 +154,11 @@ async function createChannel(userID, name) {
 // quit channel
 async function quitChannel(userId, channelId) {
     try {
+        const channel = Channel.findById(channelId);
+        if (channel.name == "#general") {
+          throw new Error('Cannot quit general channel');
+        }
+        
         const updatedChannel = await Channel.findByIdAndUpdate(
           channelId,
           { $pull: { users: userId } },
@@ -193,6 +198,12 @@ async function quitChannel(userId, channelId) {
 //method to rename a channel
 async function renameChannel(channelId, newName) {
     try {
+        const channel = await Channel.findById(channelId);
+        const oldName = channel.name;
+        if(oldName == "#general") {
+          throw new Error('Cannot rename general channel');
+        }
+
         const updatedChannel = await Channel.findByIdAndUpdate(
           channelId,
           { name: newName },

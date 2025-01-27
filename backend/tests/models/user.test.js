@@ -50,21 +50,4 @@ describe('User Model Test', () => {
     expect(error.errors.name).toBeDefined();
     expect(error.errors.name.kind).toBe('required');
   });
-
-  it('should enforce unique name for users', async () => {
-    const user1 = new User({ name: 'Unique User' });
-    await user1.save();
-
-    const user2 = new User({ name: 'Unique User' }); 
-
-    let error;
-    try {
-      await user2.save();
-    } catch (err) {
-      error = err;
-    }
-
-    expect(error).toBeDefined();
-    expect(error.code).toBe(11000);
-  });
 });

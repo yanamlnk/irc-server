@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const Channel = require('../../models/Channel'); // Adjust the path to your model
+const Channel = require('../../models/Channel');
+const ChannelUser = require('../../models/ChannelUser');
 
 describe('Channel Model Test', () => {
   let mongoServer;
@@ -65,6 +66,163 @@ describe('Channel Model Test', () => {
       error = err;
     }
   
+    expect(error).toBeDefined();
+    expect(error.name).toBe('MongoServerError');
+    expect(error.code).toBe(11000); // Duplicate key error
+  });
+
+  it('should correctly associate a ChannelUser with a Channel', async () => {
+    const channel = new Channel({ name: 'Test Channel' });
+    await channel.save();
+
+    const channelUser = new ChannelUser({
+      channel: channel._id,
+      user: new mongoose.Types.ObjectId(),
+      nickname: 'Test Nickname',
+    });
+    await channelUser.save();
+
+    const foundChannelUser = await ChannelUser.findOne({ channel: channel._id });
+
+    expect(foundChannelUser).toBeDefined();
+    expect(foundChannelUser.channel.toString()).toBe(channel._id.toString());
+    expect(foundChannelUser.nickname).toBe('Test Nickname');
+  });
+
+  it('should populate the virtual field "channelUsers" for a Channel', async () => {
+    const channel = new Channel({ name: 'Populated Channel' });
+    await channel.save();
+
+    const user1 = new mongoose.Types.ObjectId();
+    const user2 = new mongoose.Types.ObjectId();
+
+    const channelUser1 = new ChannelUser({
+      channel: channel._id,
+      user: user1,
+      nickname: 'User1 Nickname',
+    });
+    const channelUser2 = new ChannelUser({
+      channel: channel._id,
+      user: user2,
+      nickname: 'User2 Nickname',
+    });
+    await channelUser1.save();
+    await channelUser2.save();
+
+    const populatedChannel = await Channel.findById(channel._id).populate('channelUsers');
+
+    expect(populatedChannel.channelUsers).toBeDefined();
+    expect(populatedChannel.channelUsers.length).toBe(2);
+
+    const nicknames = populatedChannel.channelUsers.map((cu) => cu.nickname);
+    expect(nicknames).toContain('User1 Nickname');
+    expect(nicknames).toContain('User2 Nickname');
+  });
+
+  it('should enforce uniqueness for channel-user pairs in ChannelUser', async () => {
+    const channel = new Channel({ name: 'Unique Channel' });
+    await channel.save();
+
+    const userId = new mongoose.Types.ObjectId();
+
+    const channelUser1 = new ChannelUser({
+      channel: channel._id,
+      user: userId,
+      nickname: 'Unique Nickname',
+    });
+    await channelUser1.save();
+
+    const channelUser2 = new ChannelUser({
+      channel: channel._id,
+      user: userId,
+      nickname: 'Duplicate Nickname',
+    });
+
+    let error;
+    try {
+      await channelUser2.save();
+    } catch (err) {
+      error = err;
+    }
+
+    expect(error).toBeDefined();
+    expect(error.name).toBe('MongoServerError');
+    expect(error.code).toBe(11000); // Duplicate key error
+  });
+it('should correctly associate a ChannelUser with a Channel', async () => {
+    const channel = new Channel({ name: 'Test Channel' });
+    await channel.save();
+
+    const channelUser = new ChannelUser({
+      channel: channel._id,
+      user: new mongoose.Types.ObjectId(),
+      nickname: 'Test Nickname',
+    });
+    await channelUser.save();
+
+    const foundChannelUser = await ChannelUser.findOne({ channel: channel._id });
+
+    expect(foundChannelUser).toBeDefined();
+    expect(foundChannelUser.channel.toString()).toBe(channel._id.toString());
+    expect(foundChannelUser.nickname).toBe('Test Nickname');
+  });
+
+  it('should populate the virtual field "channelUsers" for a Channel', async () => {
+    const channel = new Channel({ name: 'Populated Channel' });
+    await channel.save();
+
+    const user1 = new mongoose.Types.ObjectId();
+    const user2 = new mongoose.Types.ObjectId();
+
+    const channelUser1 = new ChannelUser({
+      channel: channel._id,
+      user: user1,
+      nickname: 'User1 Nickname',
+    });
+    const channelUser2 = new ChannelUser({
+      channel: channel._id,
+      user: user2,
+      nickname: 'User2 Nickname',
+    });
+    await channelUser1.save();
+    await channelUser2.save();
+
+    const populatedChannel = await Channel.findById(channel._id).populate('channelUsers');
+
+    expect(populatedChannel.channelUsers).toBeDefined();
+    expect(populatedChannel.channelUsers.length).toBe(2);
+
+    const nicknames = populatedChannel.channelUsers.map((cu) => cu.nickname);
+    expect(nicknames).toContain('User1 Nickname');
+    expect(nicknames).toContain('User2 Nickname');
+  });
+
+  it('should enforce uniqueness for channel-user pairs in ChannelUser', async () => {
+    const channel = new Channel({ name: 'Unique Channel' });
+    await channel.save();
+
+    const userId = new mongoose.Types.ObjectId();
+
+    const channelUser1 = new ChannelUser({
+      channel: channel._id,
+      user: userId,
+      nickname: 'Unique Nickname',
+    });
+    await channelUser1.save();
+
+    const channelUser2 = new ChannelUser({
+      channel: channel._id,
+      user: userId,
+      nickname: 'Duplicate Nickname',
+    });
+
+    let error;
+    try {
+      await channelUser2.save();
+    } catch (err) {
+      error = err;
+    }
+
     expect(error).toBeDefined();
     expect(error.name).toBe('MongoServerError');
     expect(error.code).toBe(11000); // Duplicate key error
