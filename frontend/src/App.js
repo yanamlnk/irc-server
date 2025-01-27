@@ -70,10 +70,21 @@ const App = () => {
       );
     });
 
+    socket.on('newMessage', (newMsg) => {
+      console.log("new message", newMsg);
+      // depuis newMsg.channelId, on cherche le nom du channel
+      const findChannel = channels.find((channel) => channel.channel_id === newMsg.channelId);
+      setMessages(prevMessages => 
+        [...prevMessages, 
+          { user: newMsg.sender, text: newMsg.text, channel: findChannel.name }
+        ]);
+    });
+
     return () => {
       socket.off('userJoinedChannel');
       socket.off('userLeftChannel');
       socket.off('channelRenamed');
+      socket.off('newMessage');
     };
   }, [selectedChannel, channels]);
 
@@ -126,11 +137,27 @@ const App = () => {
     }
   };
 
-  const sendMessage = (message) => {
-    setMessages(prevMessages => [
-      ...prevMessages,
-      { user: currentUser.name, text: message, channel: selectedChannel },
-    ]);
+  const sendMessage = (newMessage) => {
+    const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
+    socket.emit('channelMessage', { text: newMessage, channelId: currentChannelId, senderMessage : currentUser.name }, (response) => {
+      if (response.success) {
+        setMessages(prevMessages => [
+          ...prevMessages,
+          { user: currentUser.name, text: newMessage, channel: selectedChannel },
+        ]);
+      }
+      else {
+        console.error(response.message);
+      }
+    });
+  };
+
+  const sendPrivateMessage = (recipient) => {
+    socket.emit('privateMessage', { text: 'newMessage', to: recipient, channelId: selectedChannel }, (res) => {
+      if (!res.success) {
+        console.error(res.message);
+      }
+    });
   };
 
   const handleSetUsername = (name) => {

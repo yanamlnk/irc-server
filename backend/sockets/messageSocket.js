@@ -15,24 +15,27 @@ function messageSocket(socket, io) {
     }
   });
   //envoyer un message au channel
-  socket.on('channelMessage', async ({ text, channelId }, callback) => {
+  socket.on('channelMessage', async ({ text, channelId, senderMessage }, callback) => {
     try {
-      if (!socket.userName) {
+      if (!senderMessage) {
         throw new Error('Choose a name before sending a message');
       }
 
-      const senderInChannel = io.sockets.adapter.rooms.get(channelId)?.has(socket.id);
-      if (!senderInChannel) {
-        throw new Error('Sender must be a member of the channel');
-      }
+      // const senderInChannel = io.sockets.adapter.rooms.get(channelId)?.has(socket.id);
+      // if (!senderInChannel) {
+      //   throw new Error('Sender must be a member of the channel');
+      // }
 
       const message = await messageService.saveMessage({
         text,
-        sender: socket.userName,
+        sender: senderMessage,
         channelId,
       });
 
-      io.to(channelId).emit('newMessage', {
+      const members = io.sockets.adapter.rooms.get(channelId.toString());
+      console.log(`Members in room for message : "${channelId.toString()}":`, members);
+
+      socket.to(channelId.toString()).emit('newMessage', {
         ...message.toObject(),
         isSent: true,
       });
