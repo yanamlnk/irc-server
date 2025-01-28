@@ -200,6 +200,10 @@ body, html {
     grid-template-rows: auto 1fr auto;
   }
 
+  .main-section {
+    margin-top: 3rem;
+  }
+
   .menu-burger {
     display: block;
   }
