@@ -13,7 +13,7 @@ describe('Message Service Test', () => {
     beforeAll(async () => {
         mongoServer = await MongoMemoryServer.create();
         const uri = mongoServer.getUri();
-        await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+        await mongoose.connect(uri);
 
         user1 = new User({ name: 'user1' });
         user2 = new User({ name: 'user2' });
@@ -34,5 +34,101 @@ describe('Message Service Test', () => {
         await Channel.deleteMany({});
     });
 
+    it('should throw an error if message text is empty', () => {
+        expect(() => messageService.validateMessage('', 'sender', 'Channel', channel._id))
+            .toThrow('Message text cannot be empty');
+    });
+
+    it('should throw an error if sender is missing', () => {
+        expect(() => messageService.validateMessage('Hello', null, 'Channel', channel._id))
+            .toThrow('Sender and recipient are required');
+    });
+
+    it('should throw an error if channelId is missing', () => {
+        expect(() => messageService.validateMessage('Hello', 'sender', 'Channel', null))
+            .toThrow('Channel ID is required');
+    });
+
+    it('should throw an error if the channel does not exist', async () => {
+        const nonExistentChannelId = new mongoose.Types.ObjectId();
+        await expect(messageService.getChannelMessages(nonExistentChannelId))
+            .rejects.toThrow('Channel not found');
+    });
+
+    it('should return all messages in the channel', async () => {
+        const message1 = new Message({
+            text: 'Hello',
+            sender: 'user1',
+            recipientType: 'Channel',
+            channelId: channel._id,
+            timestamp: new Date(),
+        });
+
+        const message2 = new Message({
+            text: 'Hi',
+            sender: 'user2',
+            recipientType: 'Channel',
+            channelId: channel._id,
+            timestamp: new Date(),
+        });
+
+        await message1.save();
+        await message2.save();
+
+        const messages = await messageService.getChannelMessages(channel._id);
+
+        expect(messages).toHaveLength(2);
+        expect(messages[0].text).toBe('Hello');
+        expect(messages[1].text).toBe('Hi');
+    });
+
+    it('should save a message successfully', async () => {
+        const text = 'New channel message';
+
+        const savedMessage = await messageService.saveMessage({
+            text,
+            sender: 'user1',
+            channelId: channel._id,
+        });
+
+        expect(savedMessage).toBeDefined();
+        expect(savedMessage.text).toBe(text);
+        expect(savedMessage.sender).toBe('user1');
+        expect(savedMessage.channelId.toString()).toBe(channel._id.toString());
+    });
+
+    it('should throw an error if validation fails', async () => {
+        await expect(
+            messageService.saveMessage({
+                text: '',
+                sender: 'user1',
+                channelId: channel._id,
+            })
+        ).rejects.toThrow('Message text cannot be empty');
+    });
+
+    it('should create a private message successfully', () => {
+        const text = 'Private message';
+        const privateMessage = messageService.createPrivateMessage({
+            text,
+            sender: 'user1',
+            recipientName: 'user2',
+        });
+
+        expect(privateMessage).toBeDefined();
+        expect(privateMessage.text).toBe(text);
+        expect(privateMessage.sender).toBe('user1');
+        expect(privateMessage.recipientName).toBe('user2');
+    });
+
+    it('should throw an error if validation fails', () => {
+        expect(() =>
+            messageService.createPrivateMessage({
+                text: '',
+                sender: 'user1',
+                recipientName: 'user2',
+            })
+        ).toThrow('Message text cannot be empty');
+    });
 
 });

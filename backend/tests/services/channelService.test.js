@@ -334,21 +334,24 @@ describe('Channel Service Test', () => {
     it('should delete a channel', async () => {
         const channel = new Channel({ name: '#channel-to-delete' });
         await channel.save();
-    
-        const result = await channelService.deleteChannel(channel._id.toString());
+
+        const channelUser = new ChannelUser({ channel: channel._id, user: '64d8b2a1c2a3f9abc1234567', nickname: 'Nick' });
+        await channelUser.save();
+
+        const result = await channelService.deleteChannel('#channel-to-delete');
         expect(result.name).toBe('#channel-to-delete');
-    
-        const deletedChannel = await Channel.findById(channel._id);
+
+        const deletedChannel = await Channel.findOne({ name: '#channel-to-delete' });
         expect(deletedChannel).toBeNull();
-    
+
         const channelUsers = await ChannelUser.find({ channel: channel._id });
         expect(channelUsers).toHaveLength(0);
     });
 
     //error for deleteChannel
-    it('should throw an error if channel is not found in deleteChannel', async () => {
-        const nonExistentChannelId = '67851bfc665bea7c527c7192';
-        await expect(channelService.deleteChannel(nonExistentChannelId)).rejects.toThrow('Channel not found');
+    it('should throw an error if channel is not found by name', async () => {
+        const nonExistentChannelName = '#non-existent-channel';
+        await expect(channelService.deleteChannel(nonExistentChannelName)).rejects.toThrow('Channel not found');
     });
 
     //for getChannels normal

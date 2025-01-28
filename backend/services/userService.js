@@ -52,11 +52,9 @@ async function updateUserName(userId, newName, channelId) {
         channel: channelId,
         nickname: newNickname,
       });
-      console.log('existingUser:', existingUser);
 
       if (existingUser) {
         newNickname = `${newName}${Math.floor(1000 + Math.random() * 9000)}`;
-        console.log('newNickname:', newNickname);
       } else {
         isNicknameTaken = false;
       }
