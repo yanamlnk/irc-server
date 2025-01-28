@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const channelService = require('../../services/channelService');
+const userService = require('../../services/userService');
 const Channel = require('../../models/Channel');
 const User = require('../../models/User');
 const ChannelUser = require('../../models/ChannelUser');
@@ -147,10 +148,10 @@ describe('Channel Service Test', () => {
     });
       
     it('should generate a nickname correctly and handle duplicate joins', async () => {
-        const user1 = new User({ name: 'John' });
+        const user1 = new User({ name: 'Steven' });
         await user1.save();
 
-        const user2 = new User({ name: 'John' });
+        const user2 = new User({ name: 'Steven' });
         await user2.save();
     
         const channel = new Channel({ name: '#test-channel' });
@@ -158,15 +159,15 @@ describe('Channel Service Test', () => {
     
         const firstJoinResult = await channelService.joinChannel(user1._id.toString(), '#test-channel');
         expect(firstJoinResult.users).toHaveLength(1);
-        expect(firstJoinResult.users[0].name).toBe('John');
+        expect(firstJoinResult.users[0].name).toBe('Steven');
     
         const firstChannelUser = await ChannelUser.findOne({ channel: channel._id, user: user1._id });
         expect(firstChannelUser).not.toBeNull();
     
         const secondJoinResult = await channelService.joinChannel(user2._id.toString(), '#test-channel');
         expect(secondJoinResult.users).toHaveLength(2);
-        expect(secondJoinResult.users[0].name).toBe('John');
-        expect(secondJoinResult.users[1].name).toMatch(/John\d{4}/);
+        expect(secondJoinResult.users[0].name).toBe('Steven');
+        expect(secondJoinResult.users[1].name).toMatch(/Steven\d{4}/);
     
         const channelUsers = await ChannelUser.find({ channel: channel._id, user: user1._id });
         expect(channelUsers).toHaveLength(1);
@@ -222,7 +223,6 @@ describe('Channel Service Test', () => {
         const user = new User({ name: 'Test User' });
         await user.save();
       
-        // Mock newChannel.save() to throw an error
         jest.spyOn(Channel.prototype, 'save').mockRejectedValueOnce(new Error('Save failed'));
       
         await expect(channelService.createChannel(user._id.toString(), 'test-channel')).rejects.toThrow('Save failed');
@@ -233,6 +233,18 @@ describe('Channel Service Test', () => {
     
         await expect(channelService.createChannel('64d8b2a1c2a3f9abc1234567', channelName))
             .rejects.toThrow('User not found');
+    });
+
+    it('should throw an error when trying to create a channel with an existing name', async () => {
+        const channel = new Channel({ name: '#general' });
+        await channel.save();
+        const user = await userService.createUser('TestUser');
+        
+        await channelService.createChannel(user._id, 'test-channel');
+        
+        await expect(channelService.createChannel(user._id, 'test-channel'))
+          .rejects
+          .toThrow('Channel already exists');
     });
       
     // for quitChannel

@@ -119,6 +119,10 @@ async function joinChannel(userId, channelName) {
 async function createChannel(userID, name) {
     try {
       const formattedName = name.startsWith('#') ? name : `#${name}`;
+      const existingChannel = await Channel.findOne({ name: formattedName });
+      if (existingChannel) {
+        throw new Error('Channel already exists');
+      }
 
       const newChannel = new Channel({ name: formattedName, users: [userID] });
       const savedChannel = await newChannel.save();
