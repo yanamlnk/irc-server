@@ -41,6 +41,18 @@ const App = () => {
         }); 
       }
     }
+
+    socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
+      ]);
+      listUsersInChannel();
+    });
+
+    return () => {
+      socket.off('userLeftChannel');
+    };
   }, [selectedChannel, channels]);
 
   useEffect(() => {
@@ -53,14 +65,6 @@ const App = () => {
       listUsersInChannel();
     });
 
-    socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
-        setMessages(prevMessages => [
-          ...prevMessages,
-          { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
-        ]);
-        listUsersInChannel();
-    });
-
     socket.on('channelRenamed', ({ channel }) => {
       // Mettre à jour les canaux existants
       setChannels((prevChannels) =>
@@ -68,6 +72,14 @@ const App = () => {
           ch.channel_id === channel.channel_id ? { ...ch, name: channel.name } : ch
         )
       );
+    });
+
+    socket.on('channelDeleted', ({ channel }) => {
+      alert("Attention ! Le salon a été supprimé, vous avez été redirigé vers le salon général");
+      if (selectedChannel === channel.name) {
+        setSelectedChannel("#general");
+      }
+      setChannels(channels.filter((ch) => ch.channel_id !== channel.channel_id));
     });
 
     socket.on('newMessage', (newMsg) => {
@@ -220,6 +232,7 @@ const App = () => {
   const createChannel = (userId, name) => {
     socket.emit("createChannel", { userId, name }, (response) => {
       if (response.success) {
+        setSelectedChannel(name);
         listChannelsOfUser(userId);
       } else {
         console.error(response.message);
@@ -265,6 +278,11 @@ const App = () => {
     socket.emit("deleteChannel", channelId, (response) => {
       if (response.success) {
         setChannels(channels.filter((channel) => channel.channel_id !== channelId));
+        if (selectedChannel === response.channel.name) {
+          alert("Le salon a été supprimé, vous avez été redirigé vers le salon général");
+          setSelectedChannel("#general");
+        }
+        setMessages(messages.filter((message) => message.channel !== response.channel.name));
       } else {
         console.error(response.message);
       }

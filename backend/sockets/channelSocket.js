@@ -170,7 +170,7 @@ function channelSocket(socket, io) {
     try {
       const result = await deleteChannel(channelId);
 
-      io.to(channelId).emit('channelDeleted', { channelId: result.channel_id });
+      socket.to(channelId).emit('channelDeleted', { channel: result });
       io.in(channelId).socketsLeave(channelId.toString());
 
       callback({ success: true, channel: result });
