@@ -26,12 +26,12 @@ const io = new Server(server, {
 });
 
 // Gestion des connexions Socket.IO
-io.on('connection', (socket) => {
+io.on('connection', socket => {
   console.log('A user connected:', socket.id);
 
   // -- Ajout d'un événement "testRoom" pour test minimal --
   //   Permet de vérifier vite fait qu'on peut avoir 2 sockets dans la même room.
-  socket.on('testRoom', (roomName) => {
+  socket.on('testRoom', roomName => {
     console.log(`Socket ${socket.id} is joining room "${roomName}"`);
     socket.join(roomName);
 
@@ -42,7 +42,7 @@ io.on('connection', (socket) => {
     // Broadcast aux autres de la room
     socket.to(roomName).emit('userJoinedTestRoom', {
       socketId: socket.id,
-      roomName
+      roomName,
     });
   });
 
@@ -52,16 +52,14 @@ io.on('connection', (socket) => {
   messageSocket(socket, io);
 
   socket.on('disconnect', () => {
-    if (socket.userName) {
-      // activeUsers.delete(socket.userName);
+    // activeUsers.delete(socket.userName);
 
-      console.log('A user disconnected:', socket.id);
-    }
+    console.log('A user disconnected:', socket.id);
   });
 });
 
 // Configuration du port et lancement du serveur
-const normalizePort = (val) => {
+const normalizePort = val => {
   const port = parseInt(val, 10);
   if (isNaN(port)) return val;
   if (port >= 0) return port;
@@ -71,7 +69,7 @@ const normalizePort = (val) => {
 const port = normalizePort(process.env.PORT || '3001');
 app.set('port', port);
 
-const errorHandler = (error) => {
+const errorHandler = error => {
   if (error.syscall !== 'listen') {
     throw error;
   }

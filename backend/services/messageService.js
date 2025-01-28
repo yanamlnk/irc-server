@@ -2,7 +2,7 @@ const Message = require('../models/Message');
 const Channel = require('../models/Channel');
 
 class MessageService {
-  validateMessage(text, sender, recipientType, channelId) {
+  validateMessage(text, sender, recipientType, channelId, recipientName) {
     if (!text?.trim()) {
       throw new Error('Message text cannot be empty');
     }
@@ -12,6 +12,10 @@ class MessageService {
 
     if (!channelId) {
       throw new Error('Channel ID is required');
+    }
+
+    if (recipientType === 'Private' && !recipientName) {
+      throw new Error('Recipient name is required for private messages');
     }
   }
 
@@ -73,9 +77,15 @@ class MessageService {
     }
   }
 
-  createPrivateMessage({ text, sender, recipientName }) {
+  createPrivateMessage({ text, sender, recipientName, channelId }) {
     try {
-      this.validateMessage(text, sender, 'Private');
+      console.log('Creating private message with:', {
+        text,
+        sender,
+        recipientName,
+        channelId,
+      });
+      // this.validateMessage(text, sender, 'Private', channelId, recipientName);
 
       return {
         text: text.trim(),

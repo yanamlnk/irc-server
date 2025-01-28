@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
-import socket from "./socket";
-import UsernameForm from "./components/UsernameForm";
-import Sidebar from "./components/Sidebar";
-import MainSection from "./components/MainSection";
-import UserList from "./components/UserList";
-import { UserExists, setNickname, listChannels } from "./utils";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import socket from './socket';
+import UsernameForm from './components/UsernameForm';
+import Sidebar from './components/Sidebar';
+import MainSection from './components/MainSection';
+import UserList from './components/UserList';
+import { UserExists, setNickname, listChannels } from './utils';
+import './App.css';
 
 const App = () => {
-  const [currentUser, setCurrentUser] = useState("");
+  const [currentUser, setCurrentUser] = useState('');
   const [isUsernameSet, setIsUsernameSet] = useState(false);
-  const [currentMessage, setCurrentMessage] = useState("");
-  const [view, setView] = useState("channels");
-  const [selectedChannel, setSelectedChannel] = useState("#general");
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [view, setView] = useState('channels');
+  const [selectedChannel, setSelectedChannel] = useState('#general');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [channels, setChannels] = useState([]);
   const [users, setUsers] = useState([]);
@@ -30,15 +30,21 @@ const App = () => {
     if (channels.length > 0) {
       listUsersInChannel();
       // on cherche le nom actuel du l'utilisateur dans le channel sélectionné
-      const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
+      const currentChannelId = channels.find(
+        channel => channel.name === selectedChannel,
+      )?.channel_id;
       if (currentChannelId) {
-        socket.emit('getNickname', { userId: currentUser.id, channelId: currentChannelId }, (response) => {
-          if (response.success) {
-            setCurrentUser({ ...currentUser, name: response.nickname });
-          } else {
-            console.error(response.message);
-          }
-        }); 
+        socket.emit(
+          'getNickname',
+          { userId: currentUser.id, channelId: currentChannelId },
+          response => {
+            if (response.success) {
+              setCurrentUser({ ...currentUser, name: response.nickname });
+            } else {
+              console.error(response.message);
+            }
+          },
+        );
       }
     }
   }, [selectedChannel, channels]);
@@ -47,37 +53,49 @@ const App = () => {
     socket.on('userJoinedChannel', ({ userId, channelId, channelName, userName }) => {
       setMessages(prevMessages => [
         ...prevMessages,
-        { user: "Bot", text: `${userName} a rejoint le salon`, channel: channelName },
+        { user: 'Bot', text: `${userName} a rejoint le salon`, channel: channelName },
       ]);
-      console.log("User joined:", userName);
+      console.log('User joined:', userName);
       listUsersInChannel();
     });
 
     socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
-        setMessages(prevMessages => [
-          ...prevMessages,
-          { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
-        ]);
-        listUsersInChannel();
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { user: 'Bot', text: `${userName} a quitté le salon`, channel: selectedChannel },
+      ]);
+      listUsersInChannel();
     });
 
     socket.on('channelRenamed', ({ channel }) => {
       // Mettre à jour les canaux existants
-      setChannels((prevChannels) =>
-        prevChannels.map((ch) =>
-          ch.channel_id === channel.channel_id ? { ...ch, name: channel.name } : ch
-        )
+      setChannels(prevChannels =>
+        prevChannels.map(ch =>
+          ch.channel_id === channel.channel_id ? { ...ch, name: channel.name } : ch,
+        ),
       );
     });
 
-    socket.on('newMessage', (newMsg) => {
-      console.log("new message", newMsg);
+    socket.on('newMessage', newMsg => {
+      console.log('new message', newMsg);
       // depuis newMsg.channelId, on cherche le nom du channel
-      const findChannel = channels.find((channel) => channel.channel_id === newMsg.channelId);
-      setMessages(prevMessages => 
-        [...prevMessages, 
-          { user: newMsg.sender, text: newMsg.text, channel: findChannel.name }
-        ]);
+      const findChannel = channels.find(channel => channel.channel_id === newMsg.channelId);
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { user: newMsg.sender, text: newMsg.text, channel: findChannel.name },
+      ]);
+    });
+
+    socket.on('newPrivateMessage', message => {
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {
+          sender: message.sender,
+          text: message.text,
+          recipient: message.recipient,
+          isSent: message.isSent,
+        },
+      ]);
     });
 
     return () => {
@@ -85,89 +103,124 @@ const App = () => {
       socket.off('userLeftChannel');
       socket.off('channelRenamed');
       socket.off('newMessage');
+      socket.off('newPrivateMessage');
     };
   }, [selectedChannel, channels]);
 
   const connectionUser = () => {
-    joinChannel(currentUser.id, "#general");
+    joinChannel(currentUser.id, '#general');
   };
 
   const handleSendMessage = () => {
-    if (currentMessage.trim() !== "") {
-      if (currentMessage.startsWith("/")) {
+    if (currentMessage.trim() !== '') {
+      if (currentMessage.startsWith('/')) {
         handleCommand(currentMessage);
       } else {
         sendMessage(currentMessage);
       }
-      setCurrentMessage("");
+      setCurrentMessage('');
     }
   };
 
-  const handleCommand = (command) => {
-    const [cmd, ...args] = command.slice(1).split(" ");
+  const handleCommand = command => {
+    const [cmd, ...args] = command.slice(1).split(' ');
     switch (cmd) {
-      case "nick":
-        const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
+      case 'nick':
+        const currentChannelId = channels.find(
+          channel => channel.name === selectedChannel,
+        )?.channel_id;
         setNickname(args[0], socket, currentUser, currentChannelId, setUsers, setCurrentUser);
         listChannelsOfUser(currentUser.id);
         break;
-      case "list":
+      case 'list':
         listChannels(args[0], socket, setMessages, messages, selectedChannel);
         break;
-      case "create":
+      case 'create':
         createChannel(currentUser.id, args[0]);
         break;
-      case "delete":
-        deleteChannel(args[0], "name");
+      case 'delete':
+        deleteChannel(args[0], 'name');
         break;
-      case "join":
+      case 'join':
         joinChannel(currentUser.id, args[0]);
         break;
-      case "quit":
+      case 'quit':
         quitChannel(currentUser.id, args[0]);
         break;
-      case "users":
+      case 'users':
         listUsersInChannel(true);
         break;
-      case "msg":
-        // sendPrivateMessage(args[0], args.slice(1).join(" "));
+      case 'msg':
+        sendPrivateMessage(args.slice(1).join(' '), args[0]);
+        const recipient = args[0];
+        const message = args.slice(1).join(' ');
+        console.log(`Recipient: ${recipient}, Message: ${message}`);
         break;
       default:
-        console.log("Commande inconnue");
+        console.log('Commande inconnue');
     }
   };
 
-  const sendMessage = (newMessage) => {
-    const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
-    socket.emit('channelMessage', { text: newMessage, channelId: currentChannelId, senderMessage : currentUser.name }, (response) => {
+  const sendMessage = newMessage => {
+    const currentChannelId = channels.find(channel => channel.name === selectedChannel)?.channel_id;
+    socket.emit(
+      'channelMessage',
+      { text: newMessage, channelId: currentChannelId, senderMessage: currentUser.name },
+      response => {
+        if (response.success) {
+          setMessages(prevMessages => [
+            ...prevMessages,
+            { user: currentUser.name, text: newMessage, channel: selectedChannel },
+          ]);
+        } else {
+          console.error(response.message);
+        }
+      },
+    );
+  };
+
+  const sendPrivateMessage = (message, recipientName) => {
+    const currentChannelId = channels.find(channel => channel.name === selectedChannel)?.channel_id;
+
+    if (currentChannelId) {
+      socket.emit(
+        'privateMessage',
+        {
+          text: message,
+          recipientName: recipientName,
+          channelId: currentChannelId,
+          senderMessage: currentUser.name,
+        },
+        response => {
+          if (response.success) {
+            setMessages(prevMessages => [
+              ...prevMessages,
+              { user: currentUser.name, text: message, recipient: recipientName, isSent: true },
+            ]);
+          } else {
+            console.error('Error sending message:', response.message);
+          }
+        },
+      );
+    }
+  };
+
+  const chargeMessages = channelId => {
+    socket.emit('getChannelMessages', { channelId }, response => {
       if (response.success) {
-        setMessages(prevMessages => [
-          ...prevMessages,
-          { user: currentUser.name, text: newMessage, channel: selectedChannel },
-        ]);
-      }
-      else {
-        console.error(response.message);
+        setMessages(response.messages);
       }
     });
   };
 
-  const sendPrivateMessage = (recipient) => {
-    socket.emit('privateMessage', { text: 'newMessage', to: recipient, channelId: selectedChannel }, (res) => {
-      if (!res.success) {
-        console.error(res.message);
-      }
-    });
-  };
-
-  const handleSetUsername = (name) => {
+  const handleSetUsername = name => {
     if (!name) {
       name = `User${Math.floor(Math.random() * 1000)}`;
     }
 
-    socket.emit("chooseName", name, (response) => {
+    socket.emit('chooseName', name, response => {
       if (response.success) {
-        console.log("User set:", response.user);
+        console.log('User set:', response.user);
         setCurrentUser({
           id: response.user.id,
           name: response.user.name,
@@ -179,8 +232,8 @@ const App = () => {
     });
   };
 
-  const listChannelsOfUser = (userId, filter = "") => {
-    socket.emit("listChannelsOfUser", userId, (response) => {
+  const listChannelsOfUser = (userId, filter = '') => {
+    socket.emit('listChannelsOfUser', userId, response => {
       if (response.success) {
         setChannels(response.channels);
       } else {
@@ -190,13 +243,19 @@ const App = () => {
   };
 
   const listUsersInChannel = (requestCommand = false) => {
-    const channelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
-    socket.emit("listUsersInChannel", channelId, (response) => {
+    const channelId = channels.find(channel => channel.name === selectedChannel)?.channel_id;
+    socket.emit('listUsersInChannel', channelId, response => {
       if (response.success) {
-        if(requestCommand) {
+        if (requestCommand) {
           setMessages(prevMessages => [
             ...prevMessages,
-            { user: "Bot", text: `Liste des utilisateurs du salon: ${response.users.map((user) => user.nickname).join(", ")}`, channel: selectedChannel },
+            {
+              user: 'Bot',
+              text: `Liste des utilisateurs du salon: ${response.users
+                .map(user => user.nickname)
+                .join(', ')}`,
+              channel: selectedChannel,
+            },
           ]);
         }
         setUsers(response.users);
@@ -207,7 +266,7 @@ const App = () => {
   };
 
   const joinChannel = (userId, channelName) => {
-    socket.emit("joinChannel", { userId, channelName }, (response) => {
+    socket.emit('joinChannel', { userId, channelName }, response => {
       if (response.success) {
         listChannelsOfUser(userId);
         setSelectedChannel(channelName);
@@ -218,7 +277,7 @@ const App = () => {
   };
 
   const createChannel = (userId, name) => {
-    socket.emit("createChannel", { userId, name }, (response) => {
+    socket.emit('createChannel', { userId, name }, response => {
       if (response.success) {
         listChannelsOfUser(userId);
       } else {
@@ -228,8 +287,8 @@ const App = () => {
   };
 
   const quitChannel = (userId, channelName) => {
-    const channelId = channels.find((channel) => channel.name === channelName).channel_id;
-    socket.emit("quitChannel", { userId, channelId }, (response) => {
+    const channelId = channels.find(channel => channel.name === channelName).channel_id;
+    socket.emit('quitChannel', { userId, channelId }, response => {
       if (response.success) {
         listChannelsOfUser(userId);
       } else {
@@ -238,15 +297,15 @@ const App = () => {
     });
   };
 
-  const renameChannel = (channelId) => {
-    let newName = prompt("Entrez le nouveau nom du salon");
+  const renameChannel = channelId => {
+    let newName = prompt('Entrez le nouveau nom du salon');
     if (newName) {
-      socket.emit("renameChannel", { channelId, newName }, (response) => {
+      socket.emit('renameChannel', { channelId, newName }, response => {
         if (response.success) {
           setChannels(
-            channels.map((channel) =>
-              channel.channel_id === channelId ? { ...channel, name: newName } : channel
-            )
+            channels.map(channel =>
+              channel.channel_id === channelId ? { ...channel, name: newName } : channel,
+            ),
           );
         } else {
           console.error(response.message);
@@ -255,16 +314,20 @@ const App = () => {
     }
   };
 
-  const deleteChannel = (channelId, type = "id") => {
-    if (type === "name") {
-      const channel = channels.find((channel) => channel.name.toLowerCase().replace(/\s/g, "") === channelId.toLowerCase().replace(/\s/g, ""));
+  const deleteChannel = (channelId, type = 'id') => {
+    if (type === 'name') {
+      const channel = channels.find(
+        channel =>
+          channel.name.toLowerCase().replace(/\s/g, '') ===
+          channelId.toLowerCase().replace(/\s/g, ''),
+      );
       if (channel) {
         channelId = channel.channel_id;
       }
     }
-    socket.emit("deleteChannel", channelId, (response) => {
+    socket.emit('deleteChannel', channelId, response => {
       if (response.success) {
-        setChannels(channels.filter((channel) => channel.channel_id !== channelId));
+        setChannels(channels.filter(channel => channel.channel_id !== channelId));
       } else {
         console.error(response.message);
       }
