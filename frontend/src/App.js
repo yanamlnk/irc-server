@@ -129,6 +129,9 @@ const App = () => {
 
   const handleCommand = (command) => {
     const [cmd, ...args] = command.slice(1).split(" ");
+    if (!args.length && (cmd != "users" && cmd != "list")) { 
+      return;
+    }
     switch (cmd) {
       case "nick":
         const currentChannelId = channels.find((channel) => channel.name === selectedChannel)?.channel_id;
