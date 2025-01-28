@@ -257,9 +257,9 @@ async function deleteChannel(channelName) {
 
         const deletedChannel = await Channel.findByIdAndDelete(channelToDelete._id);
   
-        if (!deletedChannel) {
-          throw new Error('Channel not found');
-        }
+        // if (!deletedChannel) {
+        //   throw new Error('Channel not found');
+        // }
 
         await ChannelUser.deleteMany({ channel: channelToDelete._id });
   
