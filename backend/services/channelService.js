@@ -248,18 +248,23 @@ async function renameChannel(channelId, newName) {
 }
 
 // delete channel
-async function deleteChannel(channelId) {
+async function deleteChannel(channelName) {
     try {
-        const deletedChannel = await Channel.findByIdAndDelete(channelId);
+        const channelToDelete = await Channel.findOne({ name: channelName });
+        if (!channelToDelete) {
+          throw new Error('Channel not found');
+        }
+
+        const deletedChannel = await Channel.findByIdAndDelete(channelToDelete._id);
   
         if (!deletedChannel) {
           throw new Error('Channel not found');
         }
 
-        await ChannelUser.deleteMany({ channel: channelId });
+        await ChannelUser.deleteMany({ channel: channelToDelete._id });
   
         return {
-          channel_id: deletedChannel._id,
+          channelId: deletedChannel._id,
           name: deletedChannel.name,
         };
     } catch (err) {

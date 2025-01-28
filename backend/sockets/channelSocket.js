@@ -166,12 +166,12 @@ function channelSocket(socket, io) {
   });
 
   // delete channel. Takes channel id and return channel id and name that was deleted
-  socket.on('deleteChannel', async (channelId, callback) => {
+  socket.on('deleteChannel', async (channelName, callback) => {
     try {
-      const result = await deleteChannel(channelId);
+      const result = await deleteChannel(channelName);
 
-      socket.to(channelId).emit('channelDeleted', { channel: result });
-      io.in(channelId).socketsLeave(channelId.toString());
+      socket.to(result.channelId.toString()).emit('channelDeleted', { channel: result });
+      io.in(result.channelId.toString()).socketsLeave(result.channelId.toString());
 
       callback({ success: true, channel: result });
     } catch (err) {
