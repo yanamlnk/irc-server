@@ -21,17 +21,13 @@ class MessageService {
 
   //cherche toutes les msgs relevantes à un utilisateur dans une chaine
   // inclut les msgs du channel et les msgs privés envoyés/reçus
-  async getChannelMessages(channelId, user) {
+  async getChannelMessages(channelId) {
     try {
       //verifie si le channel existe
       const channel = await Channel.findById(channelId);
 
       if (!channel) {
         throw new Error('Channel not found');
-      }
-      //vérifie si l'utilisateur est membres du channel
-      if (!channel.users.includes(user)) {
-        throw new Error('User is not a member of the channel');
       }
 
       // cherche
@@ -48,7 +44,7 @@ class MessageService {
       return messages.map(message => ({
         id: message._id,
         text: message.text,
-        sender: message.senderName,
+        sender: message.sender,
         timestamp: message.timestamp,
         channelId: message.channelId,
       }));

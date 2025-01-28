@@ -28,7 +28,7 @@ const Sidebar = ({ view, setView, channels, selectedChannel, setSelectedChannel,
                 <i
                   className="fas fa-trash-alt small"
                   title="Supprimer"
-                  onClick={() => deleteChannel(channel.channel_id)}
+                  onClick={() => deleteChannel(channel.name)}
                 ></i>
               </div>
             </li>

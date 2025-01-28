@@ -40,7 +40,7 @@ function userSocket(socket, io) {
         newName: updatedUser.nickname,
       });
       
-      callback({ success: true, newName });
+      callback({ success: true, newName: updatedUser.nickname });
     } catch (err) {
       callback({ success: false, message: err.message });
     }

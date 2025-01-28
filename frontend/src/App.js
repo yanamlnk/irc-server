@@ -34,19 +34,39 @@ const App = () => {
         channel => channel.name === selectedChannel,
       )?.channel_id;
       if (currentChannelId) {
-        socket.emit(
-          'getNickname',
-          { userId: currentUser.id, channelId: currentChannelId },
-          response => {
-            if (response.success) {
-              setCurrentUser({ ...currentUser, name: response.nickname });
-            } else {
-              console.error(response.message);
-            }
-          },
-        );
+        socket.emit('getNickname', { userId: currentUser.id, channelId: currentChannelId }, (response) => {
+          if (response.success) {
+            setCurrentUser({ ...currentUser, name: response.nickname });
+          } else {
+            console.error(response.message);
+          }
+        }); 
+
+        socket.emit('getChannelMessages', { channelId: currentChannelId }, (response) => {
+          if (response.success) {
+            setMessages(response.messages.map((msg) => ({
+              user: msg.sender,
+              text: msg.text,
+              channel: selectedChannel,
+            })));
+          } else {
+            console.error(response.message);
+          }
+        });
       }
     }
+
+    socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
+      setMessages(prevMessages => [
+        ...prevMessages,
+        { user: "Bot", text: `${userName} a quitté le salon`, channel: selectedChannel },
+      ]);
+      listUsersInChannel();
+    });
+
+    return () => {
+      socket.off('userLeftChannel');
+    };
   }, [selectedChannel, channels]);
 
   useEffect(() => {
@@ -55,15 +75,7 @@ const App = () => {
         ...prevMessages,
         { user: 'Bot', text: `${userName} a rejoint le salon`, channel: channelName },
       ]);
-      console.log('User joined:', userName);
-      listUsersInChannel();
-    });
-
-    socket.on('userLeftChannel', ({ userId, channelId, userName }) => {
-      setMessages(prevMessages => [
-        ...prevMessages,
-        { user: 'Bot', text: `${userName} a quitté le salon`, channel: selectedChannel },
-      ]);
+      console.log("User joined:", userName);
       listUsersInChannel();
     });
 
@@ -76,8 +88,18 @@ const App = () => {
       );
     });
 
-    socket.on('newMessage', newMsg => {
-      console.log('new message', newMsg);
+    socket.on('channelDeleted', ({ channel }) => {
+      alert("Attention ! Le salon a été supprimé, vous avez été redirigé vers le salon général");
+      if (selectedChannel === channel.name) {
+        setSelectedChannel("#general");
+      }
+      setChannels(channels.filter((ch) => ch.channel_id !== channel.channel_id));
+      setMessages(messages.filter((msg) => msg.channel !== channel.name));
+      listChannelsOfUser(currentUser.id);
+    });
+
+    socket.on('newMessage', (newMsg) => {
+      console.log("new message", newMsg);
       // depuis newMsg.channelId, on cherche le nom du channel
       const findChannel = channels.find(channel => channel.channel_id === newMsg.channelId);
       setMessages(prevMessages => [
@@ -122,8 +144,11 @@ const App = () => {
     }
   };
 
-  const handleCommand = command => {
-    const [cmd, ...args] = command.slice(1).split(' ');
+  const handleCommand = (command) => {
+    const [cmd, ...args] = command.slice(1).split(" ");
+    if (!args.length && (cmd != "users" && cmd != "list")) { 
+      return;
+    }
     switch (cmd) {
       case 'nick':
         const currentChannelId = channels.find(
@@ -138,8 +163,8 @@ const App = () => {
       case 'create':
         createChannel(currentUser.id, args[0]);
         break;
-      case 'delete':
-        deleteChannel(args[0], 'name');
+      case "delete":
+        deleteChannel(args[0]);
         break;
       case 'join':
         joinChannel(currentUser.id, args[0]);
@@ -279,6 +304,7 @@ const App = () => {
   const createChannel = (userId, name) => {
     socket.emit('createChannel', { userId, name }, response => {
       if (response.success) {
+        setSelectedChannel(name);
         listChannelsOfUser(userId);
       } else {
         console.error(response.message);
@@ -287,10 +313,17 @@ const App = () => {
   };
 
   const quitChannel = (userId, channelName) => {
-    const channelId = channels.find(channel => channel.name === channelName).channel_id;
-    socket.emit('quitChannel', { userId, channelId }, response => {
+    const channelId = channels.find((channel) => channel.name === channelName)?.channel_id;
+    if (!channelId) {
+      console.error("Channel not found");
+      return;
+    }
+    socket.emit("quitChannel", { userId, channelId }, (response) => {
       if (response.success) {
         listChannelsOfUser(userId);
+        if (selectedChannel === channelName) {
+          setSelectedChannel("#general");
+        }
       } else {
         console.error(response.message);
       }
@@ -314,20 +347,15 @@ const App = () => {
     }
   };
 
-  const deleteChannel = (channelId, type = 'id') => {
-    if (type === 'name') {
-      const channel = channels.find(
-        channel =>
-          channel.name.toLowerCase().replace(/\s/g, '') ===
-          channelId.toLowerCase().replace(/\s/g, ''),
-      );
-      if (channel) {
-        channelId = channel.channel_id;
-      }
-    }
-    socket.emit('deleteChannel', channelId, response => {
+  const deleteChannel = (channelName) => {
+    socket.emit("deleteChannel", channelName, (response) => {
       if (response.success) {
-        setChannels(channels.filter(channel => channel.channel_id !== channelId));
+        setChannels(channels.filter((channel) => channel.name !== channelName));
+        if (selectedChannel === response.channel.name) {
+          alert("Le salon a été supprimé, vous avez été redirigé vers le salon général");
+          setSelectedChannel("#general");
+        }
+        setMessages(messages.filter((message) => message.channel !== response.channel.name));
       } else {
         console.error(response.message);
       }
