@@ -87,16 +87,16 @@ function messageSocket(socket, io) {
           recipientName: recipientName,
           channelId,
         });
-        console.log(`Members in TEST room: ${channelId}`, channelRoom);
-        socket.emit('newPrivateMessage', {
+        console.log(`Members in private room: ${channelId}`, channelRoom);
+        socket.to(channelId.toString()).emit('newPrivateMessage', {
           ...message,
           isSent: true,
         });
 
-        io.emit('newPrivateMessage', {
-          ...message,
-          isSent: false,
-        });
+        // io.emit('newPrivateMessage', {
+        //   ...message,
+        //   isSent: false,
+        // });
 
         callback({ success: true, message });
       } catch (err) {

@@ -109,14 +109,20 @@ const App = () => {
     });
 
     socket.on('newPrivateMessage', message => {
+      // alert("Nouveau message privé reçu");
+      // setMessages(prevMessages => [
+      //   ...prevMessages,
+      //   {
+      //     sender: message.sender,
+      //     text: message.text,
+      //     recipient: message.recipient,
+      //     isSent: message.isSent,
+      //   },
+      // ]);
+      const channel = channels.find(channel => channel.channel_id === message.channelId);
       setMessages(prevMessages => [
         ...prevMessages,
-        {
-          sender: message.sender,
-          text: message.text,
-          recipient: message.recipient,
-          isSent: message.isSent,
-        },
+        { user: message.sender, text: message.text, channel: channel.name },
       ]);
     });
 

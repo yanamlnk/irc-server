@@ -89,6 +89,7 @@ class MessageService {
         recipientType: 'Private',
         recipientName,
         timestamp: new Date(),
+        channelId : channelId,
       };
     } catch (err) {
       console.error('Error creating private message:', err);
