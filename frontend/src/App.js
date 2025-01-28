@@ -258,10 +258,17 @@ const App = () => {
   };
 
   const quitChannel = (userId, channelName) => {
-    const channelId = channels.find((channel) => channel.name === channelName).channel_id;
+    const channelId = channels.find((channel) => channel.name === channelName)?.channel_id;
+    if (!channelId) {
+      console.error("Channel not found");
+      return;
+    }
     socket.emit("quitChannel", { userId, channelId }, (response) => {
       if (response.success) {
         listChannelsOfUser(userId);
+        if (selectedChannel === channelName) {
+          setSelectedChannel("#general");
+        }
       } else {
         console.error(response.message);
       }
