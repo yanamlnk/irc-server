@@ -92,6 +92,8 @@ const App = () => {
         setSelectedChannel("#general");
       }
       setChannels(channels.filter((ch) => ch.channel_id !== channel.channel_id));
+      setMessages(messages.filter((msg) => msg.channel !== channel.name));
+      listChannelsOfUser(currentUser.id);
     });
 
     socket.on('newMessage', (newMsg) => {
@@ -145,7 +147,7 @@ const App = () => {
         createChannel(currentUser.id, args[0]);
         break;
       case "delete":
-        deleteChannel(args[0], "name");
+        deleteChannel(args[0]);
         break;
       case "join":
         joinChannel(currentUser.id, args[0]);
@@ -283,16 +285,10 @@ const App = () => {
     }
   };
 
-  const deleteChannel = (channelId, type = "id") => {
-    if (type === "name") {
-      const channel = channels.find((channel) => channel.name.toLowerCase().replace(/\s/g, "") === channelId.toLowerCase().replace(/\s/g, ""));
-      if (channel) {
-        channelId = channel.channel_id;
-      }
-    }
-    socket.emit("deleteChannel", channelId, (response) => {
+  const deleteChannel = (channelName) => {
+    socket.emit("deleteChannel", channelName, (response) => {
       if (response.success) {
-        setChannels(channels.filter((channel) => channel.channel_id !== channelId));
+        setChannels(channels.filter((channel) => channel.name !== channelName));
         if (selectedChannel === response.channel.name) {
           alert("Le salon a été supprimé, vous avez été redirigé vers le salon général");
           setSelectedChannel("#general");
