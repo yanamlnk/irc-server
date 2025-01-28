@@ -93,9 +93,9 @@ async function joinChannel(userId, channelName) {
           { new: true }
         );
   
-        if (!updatedChannel) {
-          throw new Error('Channel not found');
-        }
+        // if (!updatedChannel) {
+        //   throw new Error('Channel not found');
+        // }
 
         const channelUsers = await ChannelUser.find({ channel: channel._id });
   
@@ -119,6 +119,10 @@ async function joinChannel(userId, channelName) {
 async function createChannel(userID, name) {
     try {
       const formattedName = name.startsWith('#') ? name : `#${name}`;
+      const existingChannel = await Channel.findOne({ name: formattedName });
+      if (existingChannel) {
+        throw new Error('Channel already exists');
+      }
 
       const newChannel = new Channel({ name: formattedName, users: [userID] });
       const savedChannel = await newChannel.save();
@@ -157,15 +161,24 @@ async function createChannel(userID, name) {
 // quit channel
 async function quitChannel(userId, channelId) {
     try {
+        const channel = await Channel.findById(channelId);
+        if (!channel) {
+          throw new Error('Channel not found');
+        }
+
+        if (channel.name == "#general") {
+          throw new Error('Cannot quit general channel');
+        }
+        
         const updatedChannel = await Channel.findByIdAndUpdate(
           channelId,
           { $pull: { users: userId } },
           { new: true }
         ); 
     
-        if (!updatedChannel) {
-          throw new Error('Channel not found');
-        }
+        // if (!updatedChannel) {
+        //   throw new Error('Channel not found');
+        // }
 
         const deletedChannelUser = await ChannelUser.findOneAndDelete({
           channel: channelId,
@@ -197,19 +210,25 @@ async function quitChannel(userId, channelId) {
 async function renameChannel(channelId, newName) {
     try {
         const channel = await Channel.findById(channelId);
+
+        if (!channel) {
+          throw new Error('Channel not found');
+        }
+
         const oldName = channel.name;
         if(oldName == "#general") {
           throw new Error('Cannot rename general channel');
         }
+
         const updatedChannel = await Channel.findByIdAndUpdate(
           channelId,
           { name: newName },
           { new: true }
         );
     
-        if (!updatedChannel) {
-          throw new Error('Channel not found');
-        }
+        // if (!updatedChannel) {
+        //   throw new Error('Channel not found');
+        // }
 
         const channelUsers = await ChannelUser.find({ channel: channelId });
     

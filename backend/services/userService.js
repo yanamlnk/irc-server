@@ -5,7 +5,18 @@ const ChannelUser = require('../models/ChannelUser');
 
 async function createUser(name) {
   try {
-    const user = new User({ name: name });
+    nameIsTaken = true;
+    let newName = name;
+    while (nameIsTaken) {
+      const existingUser = await User.findOne({ name: newName });
+      if (existingUser) {
+        newName = `${name}${Math.floor(1000 + Math.random() * 9000)}`;
+      } else {
+        nameIsTaken = false;
+      }
+    }
+    
+    const user = new User({ name: newName });
     await user.save();
 
     const generalChannel = '#general';
@@ -34,25 +45,30 @@ async function updateUserName(userId, newName, channelId) {
     }
 
     let isNicknameTaken = true;
-    let nickname = newName;
+    let newNickname = newName;
 
     while (isNicknameTaken) {
       const existingUser = await ChannelUser.findOne({
         channel: channelId,
-        nickname: newName,
+        nickname: newNickname,
       });
+      console.log('existingUser:', existingUser);
 
       if (existingUser) {
-        nickname = `${newName}${Math.floor(1000 + Math.random() * 9000)}`;
+        newNickname = `${newName}${Math.floor(1000 + Math.random() * 9000)}`;
+        console.log('newNickname:', newNickname);
       } else {
         isNicknameTaken = false;
       }
     }
 
-    existingChannelUser.nickname = nickname;
-    await existingChannelUser.save();
+    const updatedChannelUser = await ChannelUser.findOneAndUpdate(
+      { channel: channelId, user: userId },
+      { nickname: newNickname },
+      { new: true }
+    );
     
-    return existingChannelUser;
+    return updatedChannelUser;
   } catch (err) {
     console.error('Error updating user name:', err);
     throw err;
@@ -76,31 +92,5 @@ const getNickname = async (userId, channelId) => {
     throw error;
   }
 };
-
-// async function updateUserSocket(userId, socketId) {
-//   try {
-//     return await User.findByIdAndUpdate(userId, { socketId: socketId }, { new: true });
-//   } catch (err) {
-//     console.error('Error updating user socket:', err);
-//     throw err;
-//   }
-// }
-
-// async function getUsersInSameChannel(channelId, excludeUserId) {
-//   try {
-//     const channel = await channel.findById(channelId).populate('users', 'name socketId');
-
-//     return channel.users
-//       .filter(user => user._id.toString() !== excludeUserId)
-//       .map(user => ({
-//         id: user._id,
-//         name: user.name,
-//         socketId: user.socketId,
-//       }));
-//   } catch (err) {
-//     console.error('Error getting users in channel:', err);
-//     throw err;
-//   }
-// }
 
 module.exports = { createUser, updateUserName, getNickname };
