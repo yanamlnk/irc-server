@@ -88,6 +88,10 @@ const App = () => {
       );
     });
 
+    socket.on('userChangedName', ({ userId, channelId, newName }) => {
+      listUsersInChannel();
+    });
+
     socket.on('channelDeleted', ({ channel }) => {
       alert("Attention ! Le salon a été supprimé, vous avez été redirigé vers le salon général");
       if (selectedChannel === channel.name) {
@@ -129,6 +133,7 @@ const App = () => {
     return () => {
       socket.off('userJoinedChannel');
       socket.off('userLeftChannel');
+      socket.off('userChangedName');
       socket.off('channelRenamed');
       socket.off('newMessage');
       socket.off('newPrivateMessage');
