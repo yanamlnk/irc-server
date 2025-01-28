@@ -119,10 +119,10 @@ const App = () => {
       //     isSent: message.isSent,
       //   },
       // ]);
-      const channel = channels.find(channel => channel.channel_id === message.channelId);
+      const findChannel = channels.find(channel => channel.channel_id === message.channelId);
       setMessages(prevMessages => [
         ...prevMessages,
-        { user: message.sender, text: message.text, channel: channel.name },
+        { user: message.sender, text: message.text, channel: findChannel.name },
       ]);
     });
 
