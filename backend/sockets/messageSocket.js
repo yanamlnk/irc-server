@@ -88,7 +88,7 @@ function messageSocket(socket, io) {
           channelId,
         });
         console.log(`Members in private room: ${channelId}`, channelRoom);
-        socket.to(channelId.toString()).emit('newPrivateMessage', {
+        socket.to(recipientSocket.id.toString()).emit('newPrivateMessage', {
           ...message,
           isSent: true,
         });
