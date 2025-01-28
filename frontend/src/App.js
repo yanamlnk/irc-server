@@ -39,6 +39,18 @@ const App = () => {
             console.error(response.message);
           }
         }); 
+
+        socket.emit('getChannelMessages', { channelId: currentChannelId }, (response) => {
+          if (response.success) {
+            setMessages(response.messages.map((msg) => ({
+              user: msg.sender,
+              text: msg.text,
+              channel: selectedChannel,
+            })));
+          } else {
+            console.error(response.message);
+          }
+        });
       }
     }
 
