@@ -39,8 +39,12 @@ function channelSocket(socket, io) {
   // list all users in a channel. Needs channelID. Returns list userIDs ('user_id') and names ('name')
   socket.on('listUsersInChannel', async (channelId, callback) => {
     try {
-      const users = await getUsersInChannel(channelId);
-      callback({ success: true, users });
+      if (channelId !== null) {
+        const users = await getUsersInChannel(channelId);
+        callback({ success: true, users });
+      } else {
+        callback({ success: false, message: 'ChannelId is required' });
+      }
     } catch (err) {
       console.error(err);
       callback({ success: false, message: err.message });
