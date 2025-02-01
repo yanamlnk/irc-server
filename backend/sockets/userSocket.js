@@ -34,7 +34,7 @@ function userSocket(socket, io) {
     try {
       const updatedUser = await updateUserName(userId, newName, channelId);
 
-      io.to(channelId.toString()).emit('userChangedName', {
+      socket.to(channelId.toString()).emit('userChangedName', {
         userId: userId,
         channelId: channelId,
         newName: updatedUser.nickname,
