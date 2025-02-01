@@ -71,6 +71,8 @@ describe('Socket.io Channel Tests', () => {
     await Channel.deleteMany({});
     await ChannelUser.deleteMany({});
     await User.deleteMany({});
+
+    jest.restoreAllMocks();
   });
 
   it('should get a channel ID by name', (done) => {
@@ -277,7 +279,305 @@ describe('Socket.io Channel Tests', () => {
     });
   });
 
+  it('should create a new channel successfully', (done) => {
+    expect(clientSocket.connected).toBe(true);
+    
+    const channelData = {
+      userId: testUser._id.toString(),
+      name: 'new-channel'
+    };
 
+    clientSocket.emit('createChannel', channelData, (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channel).toBeDefined();
+        expect(response.channel.channel_id).toBeDefined();
+        expect(response.channel.name).toBe('#new-channel');
+        expect(Array.isArray(response.channel.users)).toBe(true);
+        expect(response.channel.users.length).toBe(1);
+        
+        const channelUser = response.channel.users[0];
+        expect(channelUser.user_id.toString()).toBe(testUser._id.toString());
+        expect(channelUser.name).toBe(testUser.name);
 
+        Channel.findById(response.channel.channel_id).then(channel => {
+          expect(channel).toBeTruthy();
+          expect(channel.name).toBe('#new-channel');
+          expect(channel.users).toContainEqual(testUser._id);
+
+          return ChannelUser.findOne({ 
+            channel: response.channel.channel_id,
+            user: testUser._id
+          });
+        }).then(channelUser => {
+          expect(channelUser).toBeTruthy();
+          expect(channelUser.nickname).toBe(testUser.name);
+          done();
+        });
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should handle channel creation with # prefix', (done) => {
+    const channelData = {
+      userId: testUser._id.toString(),
+      name: '#prefixed-channel'
+    };
+
+    clientSocket.emit('createChannel', channelData, (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channel.name).toBe('#prefixed-channel');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should handle missing user ID', (done) => {
+    const channelData = {
+      userId: null,
+      name: 'new-channel'
+    };
+
+    clientSocket.emit('createChannel', channelData, (response) => {
+      try {
+        expect(response.success).toBe(false);
+        expect(response.message).toBeTruthy();
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should successfully remove user from channel', (done) => {
+    Promise.all([
+      Channel.findById(testChannels[0]._id),
+      ChannelUser.findOne({ channel: testChannels[0]._id, user: testUser._id })
+    ]).then(([channel, channelUser]) => {
+      expect(channel).toBeTruthy();
+      expect(channelUser).toBeTruthy();
+  
+      clientSocket.once('userLeftChannel', (eventData) => {
+        expect(eventData.userId).toBe(testUser._id.toString());
+        expect(eventData.channelId).toBe(testChannels[0]._id.toString());
+        expect(eventData.userName).toBe('Nick-channel-1');
+      });
+  
+      clientSocket.emit('quitChannel', {
+        userId: testUser._id.toString(),
+        channelId: testChannels[0]._id.toString()
+      }, async (response) => {
+        try {
+          expect(response.success).toBe(true);
+          
+          const [updatedChannel, updatedChannelUser] = await Promise.all([
+            Channel.findById(testChannels[0]._id),
+            ChannelUser.findOne({
+              channel: testChannels[0]._id,
+              user: testUser._id
+            })
+          ]);
+  
+          expect(updatedChannel.users.includes(testUser._id)).toBeFalsy();
+          expect(updatedChannelUser).toBeNull();
+  
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    }).catch(done);
+  }, 10000);
+
+  it('should not allow quitting the general channel', (done) => {
+    Channel.create({ 
+      name: '#general', 
+      users: [testUser._id] 
+    }).then(async (generalChannel) => {
+      await ChannelUser.create({
+        channel: generalChannel._id,
+        user: testUser._id,
+        nickname: 'Nick-general'
+      });
+
+      const data = {
+        userId: testUser._id.toString(),
+        channelId: generalChannel._id.toString()
+      };
+
+      clientSocket.emit('quitChannel', data, (response) => {
+        expect(response.success).toBe(false);
+        expect(response.message).toBe('Cannot quit general channel');
+        done();
+      });
+    });
+  });
+
+  it('should handle non-existent channel', (done) => {
+    const data = {
+      userId: testUser._id.toString(),
+      channelId: new mongoose.Types.ObjectId().toString()
+    };
+
+    clientSocket.emit('quitChannel', data, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Channel not found');
+      done();
+    });
+  });
+
+  it('should successfully rename a channel', (done) => {
+    const data = {
+      channelId: testChannels[0]._id.toString(),
+      newName: 'renamed-channel'
+    };
+
+    // Listen for channelRenamed event
+    clientSocket.once('channelRenamed', (eventData) => {
+      expect(eventData.channel.name).toBe('renamed-channel');
+      expect(eventData.channel.old_name).toBe('channel-1');
+    });
+
+    clientSocket.emit('renameChannel', data, async (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channel.name).toBe('renamed-channel');
+        expect(response.channel.old_name).toBe('channel-1');
+
+        // Verify database update
+        const updatedChannel = await Channel.findById(testChannels[0]._id);
+        expect(updatedChannel.name).toBe('renamed-channel');
+        
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should not allow renaming #general channel', (done) => {
+    Channel.create({ 
+      name: '#general', 
+      users: [testUser._id] 
+    }).then(generalChannel => {
+      const data = {
+        channelId: generalChannel._id.toString(),
+        newName: 'new-general'
+      };
+
+      clientSocket.emit('renameChannel', data, (response) => {
+        expect(response.success).toBe(false);
+        expect(response.message).toBe('Cannot rename general channel');
+        done();
+      });
+    });
+  });
+
+  it('should handle non-existent channel', (done) => {
+    const data = {
+      channelId: new mongoose.Types.ObjectId().toString(),
+      newName: 'new-name'
+    };
+
+    clientSocket.emit('renameChannel', data, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Channel not found');
+      done();
+    });
+  });
+
+  it('should successfully delete a channel', (done) => {
+    const channelName = 'channel-1';
+    const channelId = testChannels[0]._id.toString();
+
+    clientSocket.once('channelDeleted', (eventData) => {
+      expect(eventData.channel.channelId).toBe(channelId);
+      expect(eventData.channel.name).toBe(channelName);
+    });
+
+    clientSocket.emit('deleteChannel', channelName, async (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channel.channelId).toBe(channelId);
+        expect(response.channel.name).toBe(channelName);
+
+        // Verify channel and its users are deleted
+        const deletedChannel = await Channel.findById(channelId);
+        const channelUsers = await ChannelUser.find({ channel: channelId });
+        
+        expect(deletedChannel).toBeNull();
+        expect(channelUsers).toHaveLength(0);
+        
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should handle non-existent channel', (done) => {
+    clientSocket.emit('deleteChannel', 'non-existent-channel', (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Channel not found');
+      done();
+    });
+  });
+
+  it('should list all channels when no search string provided', (done) => {
+    clientSocket.emit('listChannels', '', (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channels).toHaveLength(3); // From your beforeEach setup
+        expect(response.channels[0]).toHaveProperty('channel_id');
+        expect(response.channels[0]).toHaveProperty('name');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should filter channels by search string', (done) => {
+    clientSocket.emit('listChannels', 'channel-1', (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channels).toHaveLength(1);
+        expect(response.channels[0].name).toBe('channel-1');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should return empty array for non-matching search', (done) => {
+    clientSocket.emit('listChannels', 'non-existent', (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channels).toHaveLength(0);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+
+  it('should handle case-insensitive search', (done) => {
+    clientSocket.emit('listChannels', 'CHANNEL-1', (response) => {
+      try {
+        expect(response.success).toBe(true);
+        expect(response.channels).toHaveLength(1);
+        expect(response.channels[0].name).toBe('channel-1');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
 
 });
