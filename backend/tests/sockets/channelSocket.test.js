@@ -65,6 +65,9 @@ describe('Socket.io Channel Tests', () => {
         nickname: `Nick-${channel.name}`
       }).save()
     ));
+
+    jest.resetModules();
+    jest.clearAllMocks();
   });
 
   afterEach(async () => {
@@ -579,5 +582,4 @@ describe('Socket.io Channel Tests', () => {
       }
     });
   });
-
 });
