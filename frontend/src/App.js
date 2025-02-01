@@ -315,8 +315,8 @@ const App = () => {
   const createChannel = (userId, name) => {
     socket.emit('createChannel', { userId, name }, response => {
       if (response.success) {
-        setSelectedChannel(name);
         listChannelsOfUser(userId);
+        setSelectedChannel(name);
       } else {
         console.error(response.message);
       }

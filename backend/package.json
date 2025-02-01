@@ -18,6 +18,8 @@
     "mongoose": "^8.9.3"
   },
   "devDependencies": {
+    "@types/socket.io": "^3.0.1",
+    "@types/socket.io-client": "^1.4.36",
     "jest": "^29.7.0",
     "jest-html-reporter": "^3.10.2",
     "mongodb-memory-server": "^10.1.3",
