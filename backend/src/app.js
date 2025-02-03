@@ -9,8 +9,8 @@ mongoose
 
 const app = express();
 
-app.use((req, res, next) => {
-  console.log('server ok!');
+app.get('/', (req, res) => {
+  res.sendFile(join(__dirname, '../frontend/public/index.html'));
 });
 
 module.exports = app;
