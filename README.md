@@ -2,7 +2,7 @@
 
 1. [Installation](#installation)
 2. [Start the server](#start-the-server)
-3. [How to use chat](#how-to-use-chat)
+3. [How to use chat](#how-to-use)
 4. [Technologies used](#technologies-used)
 5. [Folder structure](#folder-structure)
 6. [Backend sockets](#backend-sockets)
@@ -35,7 +35,7 @@
     - `DB_NAME=irc-chat`
 15. Now run command `npm install`
 
-**Great, backend is set up!**💃
+**Great, backend is set up!** 💃
 
 ### Set up frontend
 Don't worry, not so hard as with backend!
@@ -261,7 +261,7 @@ those whose name contains the string.
 
 **Emits:** None
 
-# Special Notes
+## Special Notes
 
 1. Channel '#general' has special restrictions:
    - Cannot be quit by users
@@ -277,7 +277,6 @@ those whose name contains the string.
    - All errors are logged server-side
 
 ## User Socket
-# User Socket Events Documentation
 
 ## chooseName
 **Input Parameters:**
@@ -356,7 +355,6 @@ those whose name contains the string.
      - socket.userName: User's name
 
 ## Message socket    
-# Message Socket Events Documentation
 
 ## getChannelMessages
 **Input Parameters:**
@@ -411,7 +409,7 @@ those whose name contains the string.
 - Data: `{ ...messageObject, isSent: true }`
 - Target: Both sender and recipient sockets
 
-# Special Notes
+## Special Notes
 
 1. Message Validation:
    - Message text cannot be empty
