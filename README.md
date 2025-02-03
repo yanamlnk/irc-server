@@ -117,7 +117,7 @@ those whose name contains the string.
 - `models` to create models schema
 - `services` to create methods that "communicate" with database
 - `sockets` for sockets
-> `services` and `sockets` are divided by 2 main categories: Channel, User and Message
+> `services` and `sockets` are divided by 3 main categories: Channel, User and Message
 - `src` for server, socket and database connection
 - `tests` for tests
 
