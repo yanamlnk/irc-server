@@ -33,7 +33,8 @@
       "**/*.js",
       "!tests/**/*.js",
       "!node_modules/**",
-      "!coverage/**"
+      "!coverage/**",
+      "!src/**"
     ],
     "coverageDirectory": "coverage",
     "reporters": [

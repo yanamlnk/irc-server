@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import socket from './socket';
 import UsernameForm from './components/UsernameForm';
 import Sidebar from './components/Sidebar';
@@ -17,11 +17,16 @@ const App = () => {
   const [channels, setChannels] = useState([]);
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (isUsernameSet) {
       socket.emit('authenticate', { userId: currentUser.id });
-      // connectionUser();
       listChannelsOfUser(currentUser.id);
     }
   }, [isUsernameSet]);
@@ -29,7 +34,6 @@ const App = () => {
   useEffect(() => {
     if (channels.length > 0) {
       listUsersInChannel();
-      // on cherche le nom actuel du l'utilisateur dans le channel sélectionné
       const currentChannelId = channels.find(
         channel => channel.name === selectedChannel,
       )?.channel_id;
@@ -38,9 +42,9 @@ const App = () => {
           if (response.success) {
             setCurrentUser({ ...currentUser, name: response.nickname });
           } else {
-            console.error(response.message);
+            setErrorMessage(response.message);
           }
-        }); 
+        });
 
         socket.emit('getChannelMessages', { channelId: currentChannelId }, (response) => {
           if (response.success) {
@@ -50,7 +54,7 @@ const App = () => {
               channel: selectedChannel,
             })));
           } else {
-            console.error(response.message);
+            setErrorMessage(response.message);
           }
         });
       }
@@ -75,12 +79,10 @@ const App = () => {
         ...prevMessages,
         { user: 'Bot', text: `${userName} a rejoint le salon`, channel: channelName },
       ]);
-      console.log("User joined:", userName);
       listUsersInChannel();
     });
 
     socket.on('channelRenamed', ({ channel }) => {
-      // Mettre à jour les canaux existants
       setChannels(prevChannels =>
         prevChannels.map(ch =>
           ch.channel_id === channel.channel_id ? { ...ch, name: channel.name } : ch,
@@ -103,8 +105,6 @@ const App = () => {
     });
 
     socket.on('newMessage', (newMsg) => {
-      console.log("new message", newMsg);
-      // depuis newMsg.channelId, on cherche le nom du channel
       const findChannel = channels.find(channel => channel.channel_id === newMsg.channelId);
       setMessages(prevMessages => [
         ...prevMessages,
@@ -113,20 +113,10 @@ const App = () => {
     });
 
     socket.on('newPrivateMessage', message => {
-      // alert("Nouveau message privé reçu");
-      // setMessages(prevMessages => [
-      //   ...prevMessages,
-      //   {
-      //     sender: message.sender,
-      //     text: message.text,
-      //     recipient: message.recipient,
-      //     isSent: message.isSent,
-      //   },
-      // ]);
       const findChannel = channels.find(channel => channel.channel_id === message.channelId);
       setMessages(prevMessages => [
         ...prevMessages,
-        { user: message.sender, text: message.text, channel: findChannel.name },
+        { user: message.sender, text: message.text, channel: findChannel.name, isPrivate: true },
       ]);
     });
 
@@ -140,12 +130,17 @@ const App = () => {
     };
   }, [selectedChannel, channels]);
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const connectionUser = () => {
     joinChannel(currentUser.id, '#general');
   };
 
   const handleSendMessage = () => {
     if (currentMessage.trim() !== '') {
+      setErrorMessage(''); // Réinitialiser le message d'erreur
       if (currentMessage.startsWith('/')) {
         handleCommand(currentMessage);
       } else {
@@ -157,9 +152,10 @@ const App = () => {
 
   const handleCommand = (command) => {
     const [cmd, ...args] = command.slice(1).split(" ");
-    if (!args.length && (cmd != "users" && cmd != "list")) { 
+    if (!args.length && (cmd !== "users" && cmd !== "list")) { 
       return;
     }
+    setErrorMessage(''); // Réinitialiser le message d'erreur
     switch (cmd) {
       case 'nick':
         const currentChannelId = channels.find(
@@ -204,12 +200,13 @@ const App = () => {
       { text: newMessage, channelId: currentChannelId, senderMessage: currentUser.name },
       response => {
         if (response.success) {
+          setErrorMessage(''); // Réinitialiser le message d'erreur
           setMessages(prevMessages => [
             ...prevMessages,
             { user: currentUser.name, text: newMessage, channel: selectedChannel },
           ]);
         } else {
-          console.error(response.message);
+          setErrorMessage(response.message);
         }
       },
     );
@@ -229,12 +226,13 @@ const App = () => {
         },
         response => {
           if (response.success) {
+            setErrorMessage(''); // Réinitialiser le message d'erreur
             setMessages(prevMessages => [
               ...prevMessages,
               { user: currentUser.name, text: message, recipient: recipientName, isSent: true },
             ]);
           } else {
-            console.error('Error sending message:', response.message);
+            setErrorMessage('Error sending message: ' + response.message);
           }
         },
       );
@@ -245,6 +243,8 @@ const App = () => {
     socket.emit('getChannelMessages', { channelId }, response => {
       if (response.success) {
         setMessages(response.messages);
+      } else {
+        setErrorMessage(response.message);
       }
     });
   };
@@ -256,14 +256,13 @@ const App = () => {
 
     socket.emit('chooseName', name, response => {
       if (response.success) {
-        console.log('User set:', response.user);
         setCurrentUser({
           id: response.user.id,
           name: response.user.name,
         });
         setIsUsernameSet(true);
       } else {
-        console.error(response.message);
+        setErrorMessage(response.message);
       }
     });
   };
@@ -273,41 +272,44 @@ const App = () => {
       if (response.success) {
         setChannels(response.channels);
       } else {
-        console.error(response.message);
+        setErrorMessage(response.message);
       }
     });
   };
 
   const listUsersInChannel = (requestCommand = false) => {
     const channelId = channels.find(channel => channel.name === selectedChannel)?.channel_id;
-    socket.emit('listUsersInChannel', channelId, response => {
-      if (response.success) {
-        if (requestCommand) {
-          setMessages(prevMessages => [
-            ...prevMessages,
-            {
-              user: 'Bot',
-              text: `Liste des utilisateurs du salon: ${response.users
-                .map(user => user.nickname)
-                .join(', ')}`,
-              channel: selectedChannel,
-            },
-          ]);
+    if (channelId) {
+      socket.emit('listUsersInChannel', channelId, response => {
+        if (response.success) {
+          if (requestCommand) {
+            setMessages(prevMessages => [
+              ...prevMessages,
+              {
+                user: 'Bot',
+                text: `Liste des utilisateurs du salon: ${response.users
+                  .map(user => user.nickname)
+                  .join(', ')}`,
+                channel: selectedChannel,
+              },
+            ]);
+          }
+          setUsers(response.users);
+        } else {
+          setErrorMessage(response.message);
         }
-        setUsers(response.users);
-      } else {
-        console.error(response.message);
-      }
-    });
+      });
+    }
   };
 
   const joinChannel = (userId, channelName) => {
     socket.emit('joinChannel', { userId, channelName }, response => {
       if (response.success) {
+        setErrorMessage(''); // Réinitialiser le message d'erreur
         listChannelsOfUser(userId);
         setSelectedChannel(channelName);
       } else {
-        console.error(response.message);
+        setErrorMessage(response.message);
       }
     });
   };
@@ -315,10 +317,11 @@ const App = () => {
   const createChannel = (userId, name) => {
     socket.emit('createChannel', { userId, name }, response => {
       if (response.success) {
+        setErrorMessage(''); // Réinitialiser le message d'erreur
         listChannelsOfUser(userId);
         setSelectedChannel(name);
       } else {
-        console.error(response.message);
+        setErrorMessage(response.message);
       }
     });
   };
@@ -326,17 +329,18 @@ const App = () => {
   const quitChannel = (userId, channelName) => {
     const channelId = channels.find((channel) => channel.name === channelName)?.channel_id;
     if (!channelId) {
-      console.error("Channel not found");
+      setErrorMessage("Channel not found");
       return;
     }
     socket.emit("quitChannel", { userId, channelId }, (response) => {
       if (response.success) {
+        setErrorMessage(''); // Réinitialiser le message d'erreur
         listChannelsOfUser(userId);
         if (selectedChannel === channelName) {
           setSelectedChannel("#general");
         }
       } else {
-        console.error(response.message);
+        setErrorMessage(response.message);
       }
     });
   };
@@ -352,7 +356,7 @@ const App = () => {
             ),
           );
         } else {
-          console.error(response.message);
+          setErrorMessage(response.message);
         }
       });
     }
@@ -368,7 +372,7 @@ const App = () => {
         }
         setMessages(messages.filter((message) => message.channel !== response.channel.name));
       } else {
-        console.error(response.message);
+        setErrorMessage(response.message);
       }
     });
   };
@@ -401,6 +405,8 @@ const App = () => {
         currentMessage={currentMessage}
         setCurrentMessage={setCurrentMessage}
         handleSendMessage={handleSendMessage}
+        messagesEndRef={messagesEndRef}
+        errorMessage={errorMessage} // Ajoutez cette ligne
       />
       <UserList users={users} />
     </div>

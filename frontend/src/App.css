@@ -83,6 +83,16 @@ body, html {
   background-color: #7289da;
 }
 
+.private-message {
+  background-color: #f0f0f0;
+  color: #ff0000;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 10px;
+}
+
 .input-section {
   display: flex;
   gap: 10px;

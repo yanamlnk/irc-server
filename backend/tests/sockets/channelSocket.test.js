@@ -9,6 +9,11 @@ const Channel = require('../../models/Channel');
 const ChannelUser = require('../../models/ChannelUser');
 const User = require('../../models/User');
 
+jest.mock('../../models/Channel', () => {
+  const originalModule = jest.requireActual('../../models/Channel');
+  return originalModule;
+});
+
 describe('Socket.io Channel Tests', () => {
   let ioServer, clientSocket, serverSocket, mongoServer;
   let testUser;
@@ -66,7 +71,6 @@ describe('Socket.io Channel Tests', () => {
       }).save()
     ));
 
-    jest.resetModules();
     jest.clearAllMocks();
   });
 
@@ -440,7 +444,6 @@ describe('Socket.io Channel Tests', () => {
       newName: 'renamed-channel'
     };
 
-    // Listen for channelRenamed event
     clientSocket.once('channelRenamed', (eventData) => {
       expect(eventData.channel.name).toBe('renamed-channel');
       expect(eventData.channel.old_name).toBe('channel-1');
@@ -452,7 +455,6 @@ describe('Socket.io Channel Tests', () => {
         expect(response.channel.name).toBe('renamed-channel');
         expect(response.channel.old_name).toBe('channel-1');
 
-        // Verify database update
         const updatedChannel = await Channel.findById(testChannels[0]._id);
         expect(updatedChannel.name).toBe('renamed-channel');
         
@@ -509,7 +511,6 @@ describe('Socket.io Channel Tests', () => {
         expect(response.channel.channelId).toBe(channelId);
         expect(response.channel.name).toBe(channelName);
 
-        // Verify channel and its users are deleted
         const deletedChannel = await Channel.findById(channelId);
         const channelUsers = await ChannelUser.find({ channel: channelId });
         
@@ -582,4 +583,21 @@ describe('Socket.io Channel Tests', () => {
       }
     });
   });
+
+  it('should handle async error when listing channels', (done) => {
+    const mockError = new Error('Database error');
+    
+    jest.spyOn(mongoose.Model, 'find').mockRejectedValueOnce(mockError);
+  
+    clientSocket.emit('listChannels', '', (response) => {
+      try {
+        expect(response.success).toBe(false);
+        expect(response.message).toBe('Database error');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+  });
+  
 });

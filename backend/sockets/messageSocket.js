@@ -1,5 +1,7 @@
 const messageService = require('../services/messageService');
 const { getUsersInChannel, getChannelsOfUser } = require('../services/channelService');
+const User = require('../models/User');
+const ChannelUser = require('../models/ChannelUser');
 
 function messageSocket(socket, io) {
   console.log('MessageSocket initialized for socket:', socket.id);
@@ -57,9 +59,20 @@ function messageSocket(socket, io) {
           throw new Error('Message and recipient are required');
         }
 
+        const channelUser = await ChannelUser.findOne({
+          channel: channelId,
+          nickname: recipientName
+        });
+        if (!channelUser) {
+          throw new Error('Recipient not found in channel');
+        } 
+        const user = await User.findById(channelUser.user);
+
+        const recipientGlobalName = user.name;
+
         const recipientSocket = [...io.sockets.sockets.values()].find(
-          s => s.userName === recipientName,
-          console.log('recipientName:', recipientName),
+          s => s.userName === recipientGlobalName,
+          console.log('recipientName:', recipientGlobalName),
         );
 
         if (!recipientSocket) {
@@ -75,20 +88,25 @@ function messageSocket(socket, io) {
           throw new Error('Both users must be in the channel to exchange private messages');
         }
 
-        console.log('Values before createPrivateMessage:', {
-          text,
-          senderMessage,
-          recipientName,
-          channelId,
-        });
+        // console.log('Values before createPrivateMessage:', {
+        //   text,
+        //   senderMessage,
+        //   recipientName,
+        //   channelId,
+        // });
         const message = messageService.createPrivateMessage({
           text,
           sender: senderMessage,
           recipientName: recipientName,
           channelId,
         });
-        console.log(`Members in private room: ${channelId}`, channelRoom);
+        // console.log(`Members in private room: ${channelId}`, channelRoom);
         socket.to(recipientSocket.id.toString()).emit('newPrivateMessage', {
+          ...message,
+          isSent: true,
+        });
+
+        socket.emit('newPrivateMessage', {
           ...message,
           isSent: true,
         });

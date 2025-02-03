@@ -46,7 +46,6 @@ describe('Channel Service Test', () => {
             name: 'testChannel',
         });
     
-        // Restore the original implementation
         Channel.findOne.mockRestore();
     });    
 

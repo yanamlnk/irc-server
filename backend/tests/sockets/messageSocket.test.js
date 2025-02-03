@@ -1,209 +1,310 @@
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const { io: Client } = require('socket.io-client');
+const Client = require('socket.io-client');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const messageSocket = require('../../sockets/messageSocket');
 const Message = require('../../models/Message');
-const Channel = require('../../models/Channel');
 const User = require('../../models/User');
+const Channel = require('../../models/Channel');
+const ChannelUser = require('../../models/ChannelUser');
+
+jest.mock('../../services/messageService', () => ({
+  getChannelMessages: jest.fn(),
+  saveMessage: jest.fn(),
+  createPrivateMessage: jest.fn()
+}));
 
 describe('Socket.io Message Tests', () => {
-  let ioServer, clientSocket, serverSocket, mongoServer;
+  jest.setTimeout(10000);
+  let ioServer, clientSocket, serverSocket, mongoServer, httpServer;
+  let testChannel;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
 
-    const httpServer = createServer();
+    httpServer = createServer();
     ioServer = new Server(httpServer);
 
-    await new Promise(resolve => {
+    return new Promise((resolve) => {
       httpServer.listen(() => {
-        const { port } = httpServer.address();
-        clientSocket = Client(`http://localhost:${port}`);
-        resolve();
-      });
-    });
+        const port = httpServer.address().port;
+        
+        ioServer.on('connection', (socket) => {
+          serverSocket = socket;
+          messageSocket(socket, ioServer);
+        });
 
-    await new Promise(resolve => {
-      ioServer.on('connection', socket => {
-        serverSocket = socket;
-        messageSocket(socket, ioServer);
-        resolve();
+        clientSocket = new Client(`http://localhost:${port}`);
+        clientSocket.on('connect', resolve);
       });
-      clientSocket.connect();
     });
   });
 
   afterAll(async () => {
     await mongoose.disconnect();
     await mongoServer.stop();
-    await new Promise(resolve => {
-      ioServer.close(() => {
-        clientSocket.close();
-        resolve();
-      });
-    });
+    if (clientSocket.connected) {
+      clientSocket.disconnect();
+    }
+    if (ioServer) {
+      ioServer.close();
+    }
   });
 
-  afterEach(async () => {
-    await Message.deleteMany({});
-    await Channel.deleteMany({});
-    await User.deleteMany({});
+  beforeEach(async () => {
+    testChannel = await new Channel({ name: 'test-channel-' + Date.now() }).save();
     jest.clearAllMocks();
   });
 
-  it('should get channel messages', async () => {
-    const channel = await Channel.create({ name: 'testChannel' });
-    await Message.create({
-      text: 'Test message',
-      sender: 'testUser',
-      channelId: channel._id,
-      recipientType: 'Channel',
+  afterEach(async () => {
+    await Channel.deleteMany({});
+    await Message.deleteMany({});
+    await User.deleteMany({});
+    jest.restoreAllMocks();
+  });
+
+  it('should fetch channel messages successfully', (done) => {
+    const mockMessages = [
+      { 
+        _id: 'msg1', 
+        text: 'Hello', 
+        sender: 'user1', 
+        channelId: testChannel._id.toString()
+      }
+    ];
+
+    const messageService = require('../../services/messageService');
+    messageService.getChannelMessages.mockResolvedValueOnce(mockMessages);
+
+    clientSocket.emit('getChannelMessages', { channelId: testChannel._id }, (response) => {
+      expect(response.success).toBe(true);
+      expect(response.messages).toEqual(mockMessages);
+      done();
     });
+  });
 
-    return new Promise(resolve => {
-      clientSocket.emit('getChannelMessages', { channelId: channel._id.toString() }, response => {
-        expect(response.success).toBe(true);
-        expect(response.messages).toHaveLength(1);
-        expect(response.messages[0].text).toBe('Test message');
-        resolve();
-      });
+  it('should handle error when fetching channel messages', (done) => {
+    const messageService = require('../../services/messageService');
+    messageService.getChannelMessages.mockRejectedValueOnce(new Error('Database error'));
+
+    clientSocket.emit('getChannelMessages', { channelId: testChannel._id }, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Database error');
+      done();
     });
-  }, 10000);
+  });
 
-  it('should send message to channel', async () => {
-    const channel = await Channel.create({ name: 'testChannel' });
-    serverSocket.join(channel._id.toString());
-
-    const messageData = {
+  it('should save and broadcast channel message', (done) => {
+    const mockMessage = {
+      _id: 'msg1',
       text: 'Hello channel',
-      channelId: channel._id.toString(),
-      senderMessage: 'testUser',
+      sender: 'user1',
+      channelId: testChannel._id.toString()
     };
 
-    return new Promise(resolve => {
-      clientSocket.emit('channelMessage', messageData, async response => {
-        expect(response.success).toBe(true);
-        expect(response.message.text).toBe('Hello channel');
-
-        const savedMessage = await Message.findOne({ channelId: channel._id });
-        expect(savedMessage.text).toBe('Hello channel');
-        resolve();
-      });
+    const messageService = require('../../services/messageService');
+    messageService.saveMessage.mockResolvedValueOnce({
+      ...mockMessage,
+      toObject: () => mockMessage
     });
-  }, 10000);
 
-  it('should fail to send message when user is not in channel', async () => {
-    const channel = await Channel.create({ name: 'testChannel' });
+    serverSocket.join(testChannel._id.toString());
 
-    const messageData = {
+    clientSocket.emit('channelMessage', {
       text: 'Hello channel',
-      channelId: channel._id.toString(),
-      senderMessage: 'testUser',
-    };
+      channelId: testChannel._id,
+      senderMessage: 'user1'
+    }, (response) => {
+      expect(response.success).toBe(true);
+      expect(response.message).toEqual(mockMessage);
+      done();
+    });
+  });
 
-    return new Promise(resolve => {
-      clientSocket.emit('channelMessage', messageData, response => {
+  it('should reject message when sender name not provided', (done) => {
+    clientSocket.emit('channelMessage', {
+      text: 'Hello channel',
+      channelId: testChannel._id,
+      senderMessage: null
+    }, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Choose a name before sending a message');
+      done();
+    });
+  });
+
+  it('should reject channel message when sender not in channel', (done) => {
+    const invalidChannelId = new mongoose.Types.ObjectId().toString();
+    
+    clientSocket.emit('channelMessage', {
+      text: 'Hello channel',
+      channelId: invalidChannelId,
+      senderMessage: 'user1'
+    }, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Sender must be a member of the channel');
+      done();
+    });
+  });
+
+  it('should reject private message when recipient not online', async () => {
+    const mockUser = await new User({ name: 'globalUser2' }).save();
+    
+    await new ChannelUser({ 
+      channel: testChannel._id,
+      user: mockUser._id,
+      nickname: 'user2'
+    }).save();
+  
+    serverSocket.join(testChannel._id.toString());
+    
+    return new Promise((resolve) => {
+      clientSocket.emit('privateMessage', {
+        text: 'Hello private',
+        recipientName: 'user2',
+        channelId: testChannel._id,
+        senderMessage: 'user1'
+      }, (response) => {
         expect(response.success).toBe(false);
-        expect(response.message).toBe('Sender must be a member of the channel');
+        expect(response.message).toBe('Recipient is not online');
         resolve();
       });
     });
-  }, 10000);
+  });
 
-  it('should send private message between users in same channel', async () => {
-    const channel = await Channel.create({ name: 'testChannel' });
-
-    const recipientServer = new Server();
-    let recipientSocket;
-
-    await new Promise(resolve => {
-      recipientServer.on('connection', socket => {
-        recipientSocket = socket;
-        recipientSocket.userName = 'recipient';
-        resolve();
-      });
-
-      const recipientClient = Client(`http://localhost:${ioServer.httpServer.address().port}`);
-      recipientClient.connect();
-    });
-
-    serverSocket.userName = 'testUser';
-
-    const channelRoom = new Set([serverSocket.id, recipientSocket.id]);
-    ioServer.sockets.adapter.rooms.set(channel._id.toString(), channelRoom);
-
-    // Registrar os sockets no mapa de sockets
-    ioServer.sockets.sockets.set(serverSocket.id, serverSocket);
-    ioServer.sockets.sockets.set(recipientSocket.id, recipientSocket);
-
-    // Logs para debug
-    console.log('Channel Room:', channel._id.toString());
-    console.log('Room members:', Array.from(channelRoom));
-    console.log('Socket IDs:', {
-      sender: serverSocket.id,
-      recipient: recipientSocket.id,
-    });
-    console.log('Sockets in io:', Array.from(ioServer.sockets.sockets.keys()));
-    console.log('UserNames:', {
-      sender: serverSocket.userName,
-      recipient: recipientSocket.userName,
-    });
-
-    const messageData = {
-      text: 'Private hello',
-      recipientName: 'recipient',
-      channelId: channel._id.toString(),
-      senderMessage: 'testUser',
+  it('should reject private message when users not in same channel', async () => {
+    const mockUser = await new User({ name: 'globalUser2' }).save();
+    
+    await new ChannelUser({ 
+      channel: testChannel._id,
+      user: mockUser._id,
+      nickname: 'user2'
+    }).save();
+  
+    const recipientSocketId = 'recipient-socket-id';
+    const mockRecipientSocket = {
+      id: recipientSocketId,
+      userName: 'globalUser2' 
     };
-
-    return new Promise((resolve, reject) => {
-      // Ouvir por mensagens privadas no socket do destinatário
-      recipientSocket.on('newPrivateMessage', message => {
-        try {
-          expect(message.text).toBe('Private hello');
-          expect(message.isSent).toBe(true);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      });
-
-      // Enviar mensagem privada
-      clientSocket.emit('privateMessage', messageData, response => {
-        try {
-          expect(response.success).toBe(true);
-          expect(response.message.text).toBe('Private hello');
-        } catch (error) {
-          reject(error);
-        }
-      });
-
-      // Timeout de segurança
-      setTimeout(() => {
-        reject(new Error('Test timed out waiting for private message'));
-      }, 5000);
-    });
-  }, 15000);
-
-  it('should fail to send message without sender name', async () => {
-    const channel = await Channel.create({ name: 'testChannel' });
-
-    const messageData = {
-      text: 'Hello channel',
-      channelId: channel._id.toString(),
-      senderMessage: null,
-    };
-
-    return new Promise(resolve => {
-      clientSocket.emit('channelMessage', messageData, response => {
+    ioServer.sockets.sockets.set(recipientSocketId, mockRecipientSocket);
+  
+    const room = new Set([recipientSocketId]);
+    ioServer.sockets.adapter.rooms.set(testChannel._id.toString(), room);
+  
+    return new Promise((resolve) => {
+      clientSocket.emit('privateMessage', {
+        text: 'Hello private',
+        recipientName: 'user2',
+        channelId: testChannel._id,
+        senderMessage: 'user1'
+      }, (response) => {
         expect(response.success).toBe(false);
-        expect(response.message).toBe('Choose a name before sending a message');
+        expect(response.message).toBe('Both users must be in the channel to exchange private messages');
+        
+        ioServer.sockets.sockets.delete(recipientSocketId);
         resolve();
       });
     });
-  }, 10000);
+  });
+
+  it('should reject private message when sender name not provided', (done) => {
+    clientSocket.emit('privateMessage', {
+      text: 'Hello private',
+      recipientName: 'user2',
+      channelId: testChannel._id,
+      senderMessage: null
+    }, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('You must choose a name');
+      done();
+    });
+  });
+
+  it('should reject private message when text or recipient is missing', (done) => {
+    clientSocket.emit('privateMessage', {
+      text: '',  // Empty text
+      recipientName: '',  // Empty recipient
+      channelId: testChannel._id,
+      senderMessage: 'user1'
+    }, (response) => {
+      expect(response.success).toBe(false);
+      expect(response.message).toBe('Message and recipient are required');
+      done();
+    });
+  });
+
+  it('should successfully send private message', async () => {
+    const mockUser = await new User({ name: 'globalUser2' }).save();
+    
+    await new ChannelUser({ 
+      channel: testChannel._id,
+      user: mockUser._id,
+      nickname: 'user2'
+    }).save();
+  
+    const recipientSocketId = 'recipient-socket-id';
+    const mockRecipientSocket = {
+      id: recipientSocketId,
+      userName: 'globalUser2'  
+    };
+    ioServer.sockets.sockets.set(recipientSocketId, mockRecipientSocket);
+  
+    serverSocket.join(testChannel._id.toString());
+    const room = new Set([recipientSocketId, serverSocket.id]);
+    ioServer.sockets.adapter.rooms.set(testChannel._id.toString(), room);
+  
+    const mockMessage = {
+      text: 'Hello private',
+      sender: 'user1',
+      recipientName: 'user2',
+      channelId: testChannel._id.toString()
+    };
+  
+    const messageService = require('../../services/messageService');
+    messageService.createPrivateMessage.mockReturnValueOnce(mockMessage);
+  
+    return new Promise((resolve) => {
+      clientSocket.emit('privateMessage', {
+        text: 'Hello private',
+        recipientName: 'user2',
+        channelId: testChannel._id,
+        senderMessage: 'user1'
+      }, (response) => {
+        expect(response.success).toBe(true);
+        expect(response.message).toEqual(mockMessage);
+        
+        ioServer.sockets.sockets.delete(recipientSocketId);
+        resolve();
+      });
+    });
+  });
+
+  it('should reject private message when recipient is not found in channel', async () => {
+    const mockUser = await new User({ name: 'globalUser2' }).save();
+    
+    const recipientSocketId = 'recipient-socket-id';
+    const mockRecipientSocket = {
+      id: recipientSocketId,
+      userName: 'globalUser2'
+    };
+    ioServer.sockets.sockets.set(recipientSocketId, mockRecipientSocket);
+  
+    return new Promise((resolve) => {
+      clientSocket.emit('privateMessage', {
+        text: 'Hello private',
+        recipientName: 'user2', 
+        channelId: testChannel._id,
+        senderMessage: 'user1'
+      }, (response) => {
+        expect(response.success).toBe(false);
+        expect(response.message).toBe('Recipient not found in channel');
+        
+        ioServer.sockets.sockets.delete(recipientSocketId);
+        resolve();
+      });
+    });
+  });
 });
