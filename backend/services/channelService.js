@@ -255,6 +255,10 @@ async function deleteChannel(channelName) {
           throw new Error('Channel not found');
         }
 
+        if(channelName == "#general") {
+          throw new Error('Cannot quit general channel');
+        }
+
         const deletedChannel = await Channel.findByIdAndDelete(channelToDelete._id);
   
         // if (!deletedChannel) {
